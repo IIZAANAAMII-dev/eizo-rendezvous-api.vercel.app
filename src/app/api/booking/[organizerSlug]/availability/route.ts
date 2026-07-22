@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import {
+  getOrganizerBySlug,
   getAvailabilityByDate,
   isDateBlocked,
   getBookingSettings,
@@ -33,8 +34,12 @@ function generateTimeSlots(
   return slots;
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ organizerSlug: string }> }
+) {
   try {
+    const { organizerSlug } = await params;
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date');
 
@@ -50,8 +55,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Get organizer
+    const organizer = await getOrganizerBySlug(organizerSlug);
+    if (!organizer) {
+      return NextResponse.json(
+        { error: 'Organizer not found' },
+        { status: 404 }
+      );
+    }
+
+    if (!organizer.active) {
+      return NextResponse.json(
+        { error: 'Organizer is not active' },
+        { status: 404 }
+      );
+    }
+
     // Check if date is blocked
-    const blocked = await isDateBlocked(date);
+    const blocked = await isDateBlocked(date, organizer.id);
     if (blocked) {
       return NextResponse.json({
         date,
@@ -60,8 +81,8 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Check if Fred works on this day
-    const availability = await getAvailabilityByDate(date);
+    // Check if organizer works on this day
+    const availability = await getAvailabilityByDate(date, organizer.id);
     if (!availability || !availability.is_available) {
       return NextResponse.json({
         date,
@@ -71,10 +92,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Get booking settings
-    const settings = await getBookingSettings();
+    const settings = await getBookingSettings(organizer.id);
 
     // Get existing appointments
-    const appointments = await getAppointmentsByDate(date);
+    const appointments = await getAppointmentsByDate(date, organizer.id);
     const busySlots = new Set(appointments.map((a) => a.start_time));
 
     // Generate morning slots
@@ -121,7 +142,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('[availability] Error:', error);
+    console.error('[booking availability] Error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch availability' },
       { status: 500 }

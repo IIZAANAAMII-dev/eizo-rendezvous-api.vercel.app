@@ -1,15 +1,16 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { generateOAuthState } from '@/lib/oauth';
 
 const REQUIRED_SCOPES = ['read_metaobjects', 'write_metaobjects'];
 
-export async function GET() {
-  const shop = process.env.SHOPIFY_STORE_DOMAIN;
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const shop = searchParams.get('shop');
   const clientId = process.env.SHOPIFY_CLIENT_ID;
   const apiBaseUrl = process.env.API_BASE_URL;
 
   if (!shop) {
-    return NextResponse.json({ error: 'Missing SHOPIFY_STORE_DOMAIN' }, { status: 500 });
+    return NextResponse.json({ error: 'Missing shop parameter' }, { status: 400 });
   }
   if (!clientId) {
     return NextResponse.json({ error: 'Missing SHOPIFY_CLIENT_ID' }, { status: 500 });

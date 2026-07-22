@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getAppointmentByToken, updateAppointmentStatus } from '@/lib/supabase';
+import {
+  getOrganizerBySlug,
+  getAppointmentByToken,
+  updateAppointmentStatus,
+} from '@/lib/supabase';
 import { sendClientConfirmationEmail, sendClientCancellationEmail } from '@/lib/mail';
 
 const paramsSchema = z.object({
@@ -8,8 +12,31 @@ const paramsSchema = z.object({
   action: z.enum(['confirm', 'cancel']),
 });
 
-export async function GET(request: NextRequest) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ organizerSlug: string }> }
+) {
   try {
+    const { organizerSlug } = await params;
+
+    // Get organizer
+    const organizer = await getOrganizerBySlug(organizerSlug);
+    if (!organizer) {
+      return htmlResponse(
+        404,
+        'Organisateur introuvable',
+        'Cet organisateur n\'existe pas.'
+      );
+    }
+
+    if (!organizer.active) {
+      return htmlResponse(
+        403,
+        'Organisateur inactif',
+        'Cet organisateur n\'est pas actif.'
+      );
+    }
+
     const { searchParams } = request.nextUrl;
     const parsed = paramsSchema.safeParse({
       token: searchParams.get('token'),
@@ -25,7 +52,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { token, action } = parsed.data;
-    const appointment = await getAppointmentByToken(token);
+    const appointment = await getAppointmentByToken(token, organizer.id);
 
     if (!appointment) {
       return htmlResponse(
@@ -52,7 +79,7 @@ export async function GET(request: NextRequest) {
 
     return htmlResponse(200, title, message);
   } catch (error) {
-    console.error('[reservation action]', error);
+    console.error('[booking reservation action]', error);
     return htmlResponse(500, 'Erreur', 'Une erreur est survenue lors du traitement.');
   }
 }

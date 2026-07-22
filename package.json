@@ -10,7 +10,10 @@
   },
   "dependencies": {
     "@shopify/admin-api-client": "^1.0.0",
+    "@shopify/app-bridge-react": "^4.2.12",
     "@shopify/shopify-api": "^11.0.0",
+    "@supabase/supabase-js": "^2.110.8",
+    "dotenv": "^17.4.2",
     "next": "^15.0.0",
     "nodemailer": "^6.9.14",
     "react": "^19.0.0",

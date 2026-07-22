@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { validateOAuthState } from '@/lib/oauth';
+import { validateOAuthState, setShopifyAccessToken } from '@/lib/oauth';
 
 interface TokenResponse {
   access_token?: string;
@@ -70,52 +70,34 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // OAuth token obtained - display it for manual copy only if SHOW_SHOPIFY_TOKEN is true
-    const showToken = process.env.SHOW_SHOPIFY_TOKEN === 'true';
-    
-    if (showToken) {
-      const html = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>OAuth Token Obtenu</title>
-          <style>
-            body { font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
-            .token-box { background: #f4f4f4; padding: 15px; border-radius: 5px; word-break: break-all; font-family: monospace; }
-            h1 { color: #333; }
-            .warning { color: #e74c3c; font-weight: bold; }
-          </style>
-        </head>
-        <body>
-          <h1>✅ OAuth Token Obtenu</h1>
-          <p>Copiez ce token et ajoutez-le à votre fichier <code>.env.local</code> :</p>
-          <div class="token-box">SHOPIFY_ACCESS_TOKEN=${data.access_token}</div>
-          <p class="warning">⚠️ Ne partagez jamais ce token.</p>
-          <p>Une fois ajouté, relancez <code>npm run dev</code>.</p>
-        </body>
-        </html>
-      `;
-      return new NextResponse(html, { headers: { 'Content-Type': 'text/html' } });
-    } else {
-      // Production: do not expose token
-      const html = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Installation Réussie</title>
-          <style>
-            body { font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; text-align: center; }
-            h1 { color: #2ecc71; }
-          </style>
-        </head>
-        <body>
-          <h1>✅ Installation Réussie</h1>
-          <p>L'application a été installée avec succès.</p>
-        </body>
-        </html>
-      `;
-      return new NextResponse(html, { headers: { 'Content-Type': 'text/html' } });
-    }
+    // Store token in Supabase
+    await setShopifyAccessToken(shop, data.access_token);
+
+    // Return success page with redirect to Shopify admin
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Installation Réussie</title>
+        <style>
+          body { font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; text-align: center; }
+          h1 { color: #2ecc71; }
+        </style>
+        <script>
+          setTimeout(() => {
+            window.location.href = 'https://${shop}/admin/apps';
+          }, 2000);
+        </script>
+      </head>
+      <body>
+        <h1>✅ Installation Réussie</h1>
+        <p>L'application a été installée avec succès.</p>
+        <p>Le token d'accès a été sauvegardé dans Supabase.</p>
+        <p>Redirection vers Shopify Admin...</p>
+      </body>
+      </html>
+    `;
+    return new NextResponse(html, { headers: { 'Content-Type': 'text/html' } });
   } catch (error) {
     console.error('[auth/callback]', error);
     return NextResponse.json(

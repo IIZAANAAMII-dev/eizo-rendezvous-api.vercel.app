@@ -1,0 +1,17 @@
+{
+  "block": {
+    "booking": {
+      "name": "EIZO Booking Widget",
+      "settings": {
+        "organizer_slug": {
+          "label": "Organizer Slug",
+          "info": "The slug of the organizer (e.g., fred)"
+        },
+        "product": {
+          "label": "Product",
+          "info": "The product to display (optional)"
+        }
+      }
+    }
+  }
+}

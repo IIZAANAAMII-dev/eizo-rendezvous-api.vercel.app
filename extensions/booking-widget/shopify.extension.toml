@@ -1,0 +1,16 @@
+name = "EIZO Booking Widget"
+type = "theme_app_extension"
+uid = "6699e1c5-a4f4-6e5a-2a5b-5670282a82a956819666"
+
+[settings]
+[[settings.fields]]
+key = "organizer_slug"
+type = "single_line_text"
+name = "Organisateur Slug"
+description = "Le slug de l'organisateur (ex: fred)"
+
+[[settings.fields]]
+key = "product"
+type = "single_line_text"
+name = "Produit"
+description = "Le produit à afficher (optionnel)"

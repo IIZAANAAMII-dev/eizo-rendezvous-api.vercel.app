@@ -1,6 +1,7 @@
 import '@shopify/shopify-api/adapters/node';
 import { ApiVersion } from '@shopify/shopify-api';
 import { createAdminApiClient } from '@shopify/admin-api-client';
+import { getShopifyAccessToken } from './oauth';
 
 export const METAOBJECT_TYPE = process.env.SHOPIFY_METAOBJECT_TYPE || 'rendez_vous_fred';
 
@@ -8,17 +9,14 @@ let clientInstance: ReturnType<typeof createAdminApiClient> | null = null;
 let cachedShop: string | null = null;
 let cachedToken: string | null = null;
 
-function getShopifyClient() {
+async function getShopifyClient() {
   const storeDomain = process.env.SHOPIFY_STORE_DOMAIN;
   if (!storeDomain) {
     throw new Error('Missing SHOPIFY_STORE_DOMAIN');
   }
 
-  // Priority: SHOPIFY_ACCESS_TOKEN (static) > OAuth (optional)
-  const accessToken = process.env.SHOPIFY_ACCESS_TOKEN;
-  if (!accessToken) {
-    throw new Error('Missing SHOPIFY_ACCESS_TOKEN. Configure this environment variable.');
-  }
+  // Get token from Supabase (OAuth flow)
+  const accessToken = await getShopifyAccessToken(storeDomain);
 
   const apiVersion = process.env.SHOPIFY_API_VERSION || ApiVersion.October24;
 
@@ -90,7 +88,7 @@ export async function loadFieldKeys(): Promise<Record<string, string>> {
     }
   `;
 
-  const { data, errors } = await getShopifyClient().request<any>(query);
+  const { data, errors } = await (await getShopifyClient()).request<any>(query);
   if (errors) {
     const message = Array.isArray(errors)
       ? errors.map((e: any) => e.message).join(', ')
@@ -169,7 +167,7 @@ export async function createReservationMetaobject(
     },
   };
 
-  const { data, errors } = await getShopifyClient().request<any>(mutation, { variables });
+  const { data, errors } = await (await getShopifyClient()).request<any>(mutation, { variables });
   if (errors) {
     const message = Array.isArray(errors)
       ? errors.map((e: any) => e.message).join(', ')
@@ -206,7 +204,7 @@ export async function getReservationByToken(token: string): Promise<Reservation 
   `;
 
   const variables = { type: METAOBJECT_TYPE, handle: token };
-  const { data, errors } = await getShopifyClient().request<any>(query, { variables });
+  const { data, errors } = await (await getShopifyClient()).request<any>(query, { variables });
   if (errors) {
     const message = Array.isArray(errors)
       ? errors.map((e: any) => e.message).join(', ')
@@ -247,7 +245,7 @@ export async function updateReservationStatus(
     },
   };
 
-  const { data, errors } = await getShopifyClient().request<any>(mutation, { variables });
+  const { data, errors } = await (await getShopifyClient()).request<any>(mutation, { variables });
   if (errors) {
     const message = Array.isArray(errors)
       ? errors.map((e: any) => e.message).join(', ')
@@ -280,7 +278,7 @@ export async function getAllReservationsByDate(date: string): Promise<Reservatio
   `;
 
   const variables = { type: METAOBJECT_TYPE };
-  const { data, errors } = await getShopifyClient().request<any>(query, { variables });
+  const { data, errors } = await (await getShopifyClient()).request<any>(query, { variables });
   if (errors) {
     const message = Array.isArray(errors)
       ? errors.map((e: any) => e.message).join(', ')

@@ -70,10 +70,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // OAuth token obtained - display it for manual copy only in development
-    const isDevelopment = process.env.NODE_ENV === 'development';
+    // OAuth token obtained - display it for manual copy only if SHOW_SHOPIFY_TOKEN is true
+    const showToken = process.env.SHOW_SHOPIFY_TOKEN === 'true';
     
-    if (isDevelopment) {
+    if (showToken) {
       const html = `
         <!DOCTYPE html>
         <html>

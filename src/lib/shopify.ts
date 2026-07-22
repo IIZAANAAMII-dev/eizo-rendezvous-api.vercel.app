@@ -1,7 +1,6 @@
 import '@shopify/shopify-api/adapters/node';
 import { ApiVersion } from '@shopify/shopify-api';
 import { createAdminApiClient } from '@shopify/admin-api-client';
-import { getShopifyAccessToken } from './oauth';
 
 export const METAOBJECT_TYPE = process.env.SHOPIFY_METAOBJECT_TYPE || 'rendez_vous_fred';
 
@@ -15,10 +14,15 @@ function getShopifyClient() {
     throw new Error('Missing SHOPIFY_STORE_DOMAIN');
   }
 
-  const accessToken = getShopifyAccessToken(storeDomain);
+  // Priority: SHOPIFY_ACCESS_TOKEN (static) > OAuth (optional)
+  const accessToken = process.env.SHOPIFY_ACCESS_TOKEN;
+  if (!accessToken) {
+    throw new Error('Missing SHOPIFY_ACCESS_TOKEN. Configure this environment variable.');
+  }
+
   const apiVersion = process.env.SHOPIFY_API_VERSION || ApiVersion.October24;
 
-  // Recreate the client if the shop or token changed (e.g. after OAuth callback)
+  // Recreate the client if the shop or token changed
   if (clientInstance && cachedShop === storeDomain && cachedToken === accessToken) {
     return clientInstance;
   }
@@ -255,6 +259,44 @@ export async function updateReservationStatus(
   if (result?.userErrors?.length) {
     throw new Error(result.userErrors.map((e: any) => `${e.field}: ${e.message}`).join('; '));
   }
+}
+
+export async function getAllReservationsByDate(date: string): Promise<Reservation[]> {
+  await loadFieldKeys();
+
+  const query = `
+    query getMetaobjectsByType($type: String!) {
+      metaobjects(first: 250, type: $type) {
+        nodes {
+          id
+          handle
+          fields {
+            key
+            value
+          }
+        }
+      }
+    }
+  `;
+
+  const variables = { type: METAOBJECT_TYPE };
+  const { data, errors } = await getShopifyClient().request<any>(query, { variables });
+  if (errors) {
+    const message = Array.isArray(errors)
+      ? errors.map((e: any) => e.message).join(', ')
+      : errors.message || JSON.stringify(errors);
+    throw new Error(`Shopify query error: ${message}`);
+  }
+
+  const metaobjects = data?.metaobjects?.nodes;
+  if (!metaobjects) return [];
+
+  // Filter by date and exclude cancelled/refused status
+  const filtered = metaobjects
+    .map(normalizeMetaobject)
+    .filter((r: Reservation) => r.date === date && r.statut !== 'Refusé' && r.statut !== 'Annulé');
+
+  return filtered;
 }
 
 function normalizeMetaobject(metaobject: {

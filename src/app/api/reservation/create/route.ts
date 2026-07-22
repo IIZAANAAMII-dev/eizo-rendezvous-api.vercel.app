@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { generateToken } from '@/lib/token';
-import { createReservationMetaobject } from '@/lib/shopify';
+import { createReservationMetaobject, getAllReservationsByDate } from '@/lib/shopify';
 import { sendNewReservationEmail } from '@/lib/mail';
 
 const reservationSchema = z.object({
@@ -52,6 +52,19 @@ export async function POST(request: NextRequest) {
     }
 
     const data: ReservationInput = parsed.data;
+
+    // Check availability before creating
+    const existingReservations = await getAllReservationsByDate(data.date);
+    const isSlotTaken = existingReservations.some((r) => r.heure === data.heure);
+    if (isSlotTaken) {
+      return setCorsHeaders(
+        NextResponse.json(
+          { error: 'Ce créneau horaire est déjà réservé' },
+          { status: 409 }
+        )
+      );
+    }
+
     const token = generateToken();
     const createdAt = new Date().toISOString();
 

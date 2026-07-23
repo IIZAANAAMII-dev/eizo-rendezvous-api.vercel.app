@@ -1,0 +1,9 @@
+# Shopify CLI configuration for web app (Next.js)
+# This file tells Shopify CLI how to run the local development server
+
+[build]
+automatically_update_urls_on_dev = true
+
+[commands]
+build = "npm run build"
+dev = "npm run dev"

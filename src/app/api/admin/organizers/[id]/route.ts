@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getShopifyConnectionId } from '@/lib/shopify-session';
+import { getSupabaseClient } from '@/lib/supabase';
 import { updateOrganizer, deleteOrganizer } from '@/lib/supabase';
 
 const organizerUpdateSchema = z.object({
@@ -8,6 +9,44 @@ const organizerUpdateSchema = z.object({
   slug: z.string().min(1).max(50).regex(/^[a-z0-9-]+$/).optional(),
   active: z.boolean().optional(),
 });
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const { searchParams } = new URL(request.url);
+    const shop = searchParams.get('shop');
+    
+    if (!shop) {
+      return NextResponse.json({ error: 'Missing shop parameter' }, { status: 400 });
+    }
+    
+    const shopifyConnectionId = await getShopifyConnectionId(shop);
+    const supabase = getSupabaseClient();
+    
+    const { data, error } = await supabase
+      .from('organizers')
+      .select('*')
+      .eq('id', id)
+      .eq('shopify_connection_id', shopifyConnectionId)
+      .single();
+    
+    if (error) {
+      throw error;
+    }
+    
+    if (!data) {
+      return NextResponse.json({ error: 'Organizer not found' }, { status: 404 });
+    }
+    
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('[admin organizers GET]', error);
+    return NextResponse.json({ error: 'Failed to fetch organizer' }, { status: 500 });
+  }
+}
 
 export async function PUT(
   request: NextRequest,

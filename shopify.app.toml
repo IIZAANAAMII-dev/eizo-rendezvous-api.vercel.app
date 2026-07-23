@@ -2,8 +2,8 @@
 
 name = "EIZO Rendez-vous"
 client_id = "7ab91397ef48e5812a5dc2646820b0df"
-application_url = "https://eizo-rendezvous-api-vercel-app.vercel.app"
-embedded = false
+application_url = "https://eizo-rendezvous-api.vercel.app"
+embedded = true
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
@@ -13,7 +13,7 @@ use_legacy_install_flow = false
 
 [auth]
 redirect_urls = [
-  "https://eizo-rendezvous-api-vercel-app.vercel.app/api/auth/callback"
+  "https://eizo-rendezvous-api.vercel.app/api/auth/callback"
 ]
 
 [pos]
@@ -22,7 +22,10 @@ embedded = false
 [app_proxy]
 subpath = "booking"
 prefix = "apps"
-url = "https://eizo-rendezvous-api-vercel-app.vercel.app/api/proxy"
+url = "https://eizo-rendezvous-api.vercel.app/api/proxy"
 
 [webhooks]
 api_version = "2026-07"
+
+[build]
+automatically_update_urls_on_dev = true

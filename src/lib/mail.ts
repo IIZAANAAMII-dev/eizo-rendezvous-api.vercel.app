@@ -20,8 +20,7 @@ function getTransporter() {
 }
 
 function getActionUrl(token: string, action: 'confirm' | 'cancel') {
-  const base = process.env.API_BASE_URL;
-  if (!base) throw new Error('Missing API_BASE_URL environment variable');
+  const base = process.env.API_BASE_URL || 'http://localhost:3000';
   return `${base}/api/reservation/action?token=${encodeURIComponent(token)}&action=${action}`;
 }
 

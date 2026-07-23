@@ -3,14 +3,46 @@ export interface Organizer {
   shopify_connection_id?: string;
   name: string;
   slug: string;
+  email?: string;
+  specialty?: string;
+  description?: string;
+  timezone?: string;
+  phone?: string;
   active: boolean;
+  avatar_url?: string;
   created_at?: string;
+  updated_at?: string;
 }
 
 export interface OrganizerInput {
   name: string;
   slug: string;
+  email?: string;
+  specialty?: string;
+  description?: string;
+  timezone?: string;
+  phone?: string;
   active: boolean;
+}
+
+export interface OrganizerProfile {
+  id?: string;
+  organizer_id: string;
+  photo_url?: string;
+  description?: string;
+  specialty?: string;
+  phone?: string;
+  timezone?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface OrganizerProfileInput {
+  photo_url?: string;
+  description?: string;
+  specialty?: string;
+  phone?: string;
+  timezone?: string;
 }
 
 export interface Availability {
@@ -18,8 +50,15 @@ export interface Availability {
   organizer_id: string;
   day_of_week: number;
   is_available: boolean;
-  start_time?: string;
-  end_time?: string;
+  availability_slots?: AvailabilitySlot[];
+}
+
+export interface AvailabilitySlot {
+  id?: string;
+  availability_id?: string;
+  start_time: string;
+  end_time: string;
+  created_at?: string;
 }
 
 export interface BookingSettings {
@@ -32,4 +71,47 @@ export interface BookingSettings {
   morning_end: string;
   afternoon_start: string;
   afternoon_end: string;
+}
+
+export interface AppointmentType {
+  id?: string;
+  organizer_id: string;
+  name: string;
+  description?: string;
+  duration_minutes: number;
+  color?: string;
+  buffer_before_minutes?: number;
+  buffer_after_minutes?: number;
+  active?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AppointmentTypeInput {
+  name: string;
+  description?: string;
+  duration_minutes: number;
+  color?: string;
+  buffer_before_minutes?: number;
+  buffer_after_minutes?: number;
+  active?: boolean;
+}
+
+export interface AvailabilityException {
+  id?: string;
+  organizer_id: string;
+  date: string;
+  start_time?: string;
+  end_time?: string;
+  type: 'unavailable' | 'override';
+  reason?: string;
+  created_at?: string;
+}
+
+export interface AvailabilityExceptionInput {
+  date: string;
+  start_time?: string;
+  end_time?: string;
+  type: 'unavailable' | 'override';
+  reason?: string;
 }

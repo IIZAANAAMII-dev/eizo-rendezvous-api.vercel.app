@@ -3,7 +3,7 @@
 
   const DATA_EL_ID = 'eizo-booking-widget-data';
   const SEEN_KEY = 'eizo_bw_seen';
-  const POPUP_CLOSED_KEY = 'eizo_bw_popup_closed';
+  const PROMPT_KEY = 'eizo_bw_prompt';
   const LS = (() => {
     try { return window.localStorage; } catch { return null; }
   })();
@@ -33,7 +33,8 @@
     currentMonth: new Date(),
     selectedDate: null,
     selectedSlot: null,
-    popupShown: false,
+    promptShown: false,
+    widgetBuilt: false,
   };
 
   function getInitials(name = '') {
@@ -56,8 +57,8 @@
   }
 
   function isColorEdgeProduct() {
-    // Forcer temporairement l'affichage sur les collections/pages hors produit
-    return TEMPLATE !== 'product';
+    // DEBUG : compte toutes les consultations produit comme ColorEdge
+    return true;
   }
 
   function readSeen() {
@@ -72,34 +73,30 @@
     try { LS.setItem(SEEN_KEY, JSON.stringify(list.slice(-10))); } catch {}
   }
 
-  function isPopupClosed() {
-    if (!LS) return false;
-    try { return LS.getItem(POPUP_CLOSED_KEY) === 'true'; } catch { return false; }
+  function readPromptAnswer() {
+    if (!LS) return null;
+    try { return LS.getItem(PROMPT_KEY); } catch { return null; }
   }
 
-  function markPopupClosed() {
+  function markPromptAnswer(answer) {
     if (!LS) return;
-    try { LS.setItem(POPUP_CLOSED_KEY, 'true'); } catch {}
+    try { LS.setItem(PROMPT_KEY, answer); } catch {}
   }
 
-  function trackView() {
-    if (!isColorEdgeProduct()) return 0;
-    const key = CONFIG.productHandle || TEMPLATE || window.location.pathname || '';
-    if (!key) return 0;
-    const seen = readSeen().filter(h => h !== key);
-    seen.push(key);
+  function trackProductView() {
+    if (TEMPLATE !== 'product' || !isColorEdgeProduct()) return;
+    const handle = CONFIG.productHandle || TEMPLATE;
+    const seen = readSeen().filter(h => h !== handle);
+    seen.push(handle);
     saveSeen(seen);
-    return seen.length;
   }
 
-  function shouldShowPopup() {
+  function shouldShowPrompt() {
     if (!CONFIG.showPopup) return false;
     if (TEMPLATE === 'product') return false;
-    if (!isColorEdgeProduct()) return false;
-    if (isPopupClosed()) return false;
+    if (readPromptAnswer()) return false;
     const threshold = parseInt(CONFIG.triggerThreshold || '3', 10);
-    const count = trackView();
-    return count >= threshold;
+    return readSeen().length >= threshold;
   }
 
   async function fetchOrganizer() {
@@ -152,29 +149,22 @@
         --eizo-shadow-lg: 0 25px 60px rgba(0,0,0,0.18);
       }
       .eizo-bw-hidden { display: none !important; }
-      .eizo-bw-popup {
-        position: fixed; bottom: 24px; right: 24px; z-index: 9000;
-        width: min(420px, calc(100vw - 32px));
-        background: var(--eizo-white); border-radius: var(--eizo-radius);
-        box-shadow: var(--eizo-shadow-lg); padding: 22px;
-        opacity: 0; transform: translateY(16px) scale(0.97);
-        transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.16,1,0.3,1);
-        pointer-events: none;
-      }
-      .eizo-bw-popup.eizo-bw-active { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
-      .eizo-bw-popup-close { position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; border: none; background: transparent; border-radius: 50%; cursor: pointer; color: var(--eizo-muted); font-size: 20px; line-height: 1; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
-      .eizo-bw-popup-close:hover { background: var(--eizo-bg); color: var(--eizo-text); }
-      .eizo-bw-popup-header { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
-      .eizo-bw-popup-avatar { width: 52px; height: 52px; border-radius: 50%; background: var(--eizo-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 600; flex-shrink: 0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,102,204,0.2); }
-      .eizo-bw-popup-avatar img { width: 100%; height: 100%; object-fit: cover; }
-      .eizo-bw-popup-title { font-size: 17px; font-weight: 700; color: var(--eizo-text); margin: 0 0 2px; padding-right: 24px; }
-      .eizo-bw-popup-subtitle { font-size: 13px; color: var(--eizo-primary); font-weight: 600; margin: 0; }
-      .eizo-bw-popup-text { font-size: 14px; color: var(--eizo-muted); margin: 0 0 18px; line-height: 1.5; }
-      .eizo-bw-popup-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 22px; border: none; border-radius: 10px; background: var(--eizo-primary); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; transition: filter 0.2s, transform 0.2s; }
-      .eizo-bw-popup-btn:hover { filter: brightness(0.93); transform: translateY(-1px); }
-      .eizo-bw-fab { position: fixed; bottom: 24px; right: 24px; z-index: 9000; padding: 14px 20px; border: none; border-radius: 50px; background: var(--eizo-primary); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: var(--eizo-shadow); opacity: 0; transform: translateY(10px); transition: opacity 0.3s, transform 0.3s; }
-      .eizo-bw-fab.eizo-bw-active { opacity: 1; transform: translateY(0); }
-      .eizo-bw-fab:hover { filter: brightness(0.93); }
+      .eizo-bw-prompt { position: fixed; inset: 0; z-index: 10000; display: none; align-items: center; justify-content: center; background: rgba(11,18,32,0.45); backdrop-filter: blur(4px); opacity: 0; transition: opacity 0.3s ease; padding: 16px; }
+      .eizo-bw-prompt.eizo-bw-active { display: flex; opacity: 1; }
+      .eizo-bw-prompt-card { width: min(420px, 100%); background: var(--eizo-white); border-radius: var(--eizo-radius); box-shadow: var(--eizo-shadow-lg); padding: 32px; text-align: center; transform: scale(0.96); transition: transform 0.35s cubic-bezier(0.16,1,0.3,1); }
+      .eizo-bw-prompt.eizo-bw-active .eizo-bw-prompt-card { transform: scale(1); }
+      .eizo-bw-prompt-avatar { width: 72px; height: 72px; border-radius: 50%; background: var(--eizo-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 600; margin: 0 auto 18px; overflow: hidden; box-shadow: 0 6px 18px rgba(0,102,204,0.25); }
+      .eizo-bw-prompt-avatar img { width: 100%; height: 100%; object-fit: cover; }
+      .eizo-bw-prompt-title { font-size: 22px; font-weight: 700; color: var(--eizo-text); margin: 0 0 10px; }
+      .eizo-bw-prompt-text { font-size: 15px; color: var(--eizo-muted); line-height: 1.5; margin: 0 0 24px; }
+      .eizo-bw-prompt-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+      .eizo-bw-prompt-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: filter 0.2s, transform 0.2s; }
+      .eizo-bw-prompt-btn:hover { filter: brightness(0.93); transform: translateY(-1px); }
+      .eizo-bw-prompt-btn-primary { background: var(--eizo-primary); color: #fff; }
+      .eizo-bw-prompt-btn-secondary { background: var(--eizo-bg); color: var(--eizo-text); }
+      .eizo-bw-mini { position: fixed; left: 24px; bottom: 24px; z-index: 9000; width: 56px; height: 56px; border: none; border-radius: 50%; background: var(--eizo-primary); color: #fff; font-size: 26px; cursor: pointer; box-shadow: var(--eizo-shadow-lg); opacity: 0; transform: translateY(20px) scale(0.9); transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.16,1,0.3,1); display: flex; align-items: center; justify-content: center; }
+      .eizo-bw-mini.eizo-bw-active { opacity: 1; transform: translateY(0) scale(1); }
+      .eizo-bw-mini:hover { filter: brightness(0.93); transform: scale(1.05); }
       .eizo-bw-backdrop { position: fixed; inset: 0; z-index: 10000; display: none; align-items: center; justify-content: center; background: rgba(11,18,32,0.45); backdrop-filter: blur(4px); opacity: 0; transition: opacity 0.3s ease; padding: 16px; }
       .eizo-bw-backdrop.eizo-bw-active { display: flex; opacity: 1; }
       .eizo-bw-modal { position: relative; width: min(960px, 100%); max-height: calc(100vh - 32px); background: var(--eizo-white); border-radius: var(--eizo-radius); box-shadow: var(--eizo-shadow-lg); overflow: hidden; display: grid; grid-template-columns: 300px 1fr; opacity: 0; transform: translateY(24px) scale(0.98); transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.16,1,0.3,1); }
@@ -230,7 +220,9 @@
       .eizo-bw-success-text { font-size: 15px; color: var(--eizo-muted); line-height: 1.5; }
       .eizo-bw-error { padding: 14px; border-radius: 10px; background: #FEF2F2; color: var(--eizo-danger); font-size: 14px; margin-bottom: 16px; }
       @media (max-width: 740px) {
-        .eizo-bw-popup { left: 16px; right: 16px; bottom: 16px; width: auto; padding: 18px; }
+        .eizo-bw-prompt { padding: 12px; }
+        .eizo-bw-prompt-card { padding: 22px; }
+        .eizo-bw-mini { left: 16px; bottom: 16px; width: 48px; height: 48px; font-size: 22px; }
         .eizo-bw-modal { width: 100%; height: 100%; max-height: none; border-radius: 0; grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
         .eizo-bw-sidebar { border-right: none; border-bottom: 1px solid var(--eizo-border); padding: 20px 24px; display: flex; align-items: center; gap: 18px; }
         .eizo-bw-avatar { width: 56px; height: 56px; font-size: 18px; margin-bottom: 0; flex-shrink: 0; }
@@ -255,32 +247,33 @@
     });
 
     const org = state.organizer || {};
-    const popupAvatar = org.avatar_url
+    const promptAvatar = org.avatar_url
       ? `<img src="${escapeHtml(org.avatar_url)}" alt="${escapeHtml(org.name || 'Expert')}">`
       : getInitials(org.name || 'EIZO');
-    const popup = document.createElement('div');
-    popup.id = 'eizo-bw-popup';
-    popup.className = 'eizo-bw-popup';
-    popup.setAttribute('role', 'dialog');
-    popup.setAttribute('aria-label', 'Prendre rendez-vous');
-    popup.innerHTML = `
-      <button class="eizo-bw-popup-close" aria-label="Fermer">×</button>
-      <div class="eizo-bw-popup-header">
-        <div class="eizo-bw-popup-avatar">${popupAvatar}</div>
-        <div class="eizo-bw-popup-meta">
-          <h3 class="eizo-bw-popup-title">Réserver une démonstration</h3>
-          <p class="eizo-bw-popup-subtitle">Avec ${escapeHtml(org.name || 'nos experts EIZO')}</p>
+
+    const prompt = document.createElement('div');
+    prompt.id = 'eizo-bw-prompt';
+    prompt.className = 'eizo-bw-prompt';
+    prompt.setAttribute('role', 'dialog');
+    prompt.setAttribute('aria-label', 'Proposition de rendez-vous');
+    prompt.innerHTML = `
+      <div class="eizo-bw-prompt-card" role="document">
+        <div class="eizo-bw-prompt-avatar">${promptAvatar}</div>
+        <h3 class="eizo-bw-prompt-title">Vous consultez nos ColorEdge ?</h3>
+        <p class="eizo-bw-prompt-text">Voulez-vous planifier une démonstration personnalisée avec ${escapeHtml(org.name || 'un expert EIZO')} ?</p>
+        <div class="eizo-bw-prompt-actions">
+          <button class="eizo-bw-prompt-btn eizo-bw-prompt-btn-primary" type="button" id="eizo-bw-prompt-yes">Oui, choisir un créneau</button>
+          <button class="eizo-bw-prompt-btn eizo-bw-prompt-btn-secondary" type="button" id="eizo-bw-prompt-no">Non, merci</button>
         </div>
       </div>
-      <p class="eizo-bw-popup-text">Besoin d'aide pour choisir votre écran ColorEdge ? Réservez un créneau personnalisé.</p>
-      <button class="eizo-bw-popup-btn" type="button" id="eizo-bw-popup-cta">Choisir un créneau</button>
     `;
 
-    const fab = document.createElement('button');
-    fab.id = 'eizo-bw-fab';
-    fab.className = 'eizo-bw-fab';
-    fab.type = 'button';
-    fab.textContent = 'Prendre rendez-vous';
+    const mini = document.createElement('button');
+    mini.id = 'eizo-bw-mini';
+    mini.className = 'eizo-bw-mini';
+    mini.type = 'button';
+    mini.setAttribute('aria-label', 'Prendre rendez-vous');
+    mini.textContent = '📅';
 
     const backdrop = document.createElement('div');
     backdrop.id = 'eizo-bw-backdrop';
@@ -354,12 +347,12 @@
       </div>
     `;
 
-    document.body.appendChild(popup);
-    document.body.appendChild(fab);
+    document.body.appendChild(prompt);
+    document.body.appendChild(mini);
     document.body.appendChild(backdrop);
 
     renderSidebar();
-    bindEvents(popup, fab, backdrop);
+    bindEvents(prompt, mini, backdrop);
   }
 
   function renderSidebar() {
@@ -381,21 +374,35 @@
     }
   }
 
-  function bindEvents(popup, fab, backdrop) {
-    popup.querySelector('.eizo-bw-popup-close').addEventListener('click', () => {
-      popup.classList.remove('eizo-bw-active');
-      markPopupClosed();
-    });
-    popup.querySelector('#eizo-bw-popup-cta').addEventListener('click', () => {
-      popup.classList.remove('eizo-bw-active');
+  function bindEvents(prompt, mini, backdrop) {
+    prompt.querySelector('#eizo-bw-prompt-yes').addEventListener('click', () => {
+      hidePrompt();
+      markPromptAnswer('yes');
       openModal();
     });
+    prompt.querySelector('#eizo-bw-prompt-no').addEventListener('click', () => {
+      hidePrompt();
+      markPromptAnswer('no');
+      showMiniIcon();
+    });
+    prompt.addEventListener('click', e => {
+      if (e.target === prompt) {
+        hidePrompt();
+        markPromptAnswer('no');
+        showMiniIcon();
+      }
+    });
 
-    fab.addEventListener('click', openModal);
+    mini.addEventListener('click', openModal);
 
     backdrop.querySelector('.eizo-bw-close').addEventListener('click', closeModal);
     backdrop.addEventListener('click', e => { if (e.target === backdrop) closeModal(); });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        if (isPromptOpen()) { hidePrompt(); markPromptAnswer('no'); showMiniIcon(); }
+        closeModal();
+      }
+    });
 
     document.getElementById('eizo-bw-prev').addEventListener('click', () => changeMonth(-1));
     document.getElementById('eizo-bw-next').addEventListener('click', () => changeMonth(1));
@@ -403,16 +410,31 @@
     document.getElementById('eizo-bw-form').addEventListener('submit', submitBooking);
   }
 
-  function showPopup() {
-    if (state.popupShown) return;
-    state.popupShown = true;
-    const popup = document.getElementById('eizo-bw-popup');
-    if (popup) popup.classList.add('eizo-bw-active');
+  function isPromptOpen() {
+    const prompt = document.getElementById('eizo-bw-prompt');
+    return prompt ? prompt.classList.contains('eizo-bw-active') : false;
   }
 
-  function showFab() {
-    const fab = document.getElementById('eizo-bw-fab');
-    if (fab && CONFIG.showBookingButton) fab.classList.add('eizo-bw-active');
+  function showPrompt() {
+    if (state.promptShown) return;
+    state.promptShown = true;
+    const prompt = document.getElementById('eizo-bw-prompt');
+    if (prompt) prompt.classList.add('eizo-bw-active');
+  }
+
+  function hidePrompt() {
+    const prompt = document.getElementById('eizo-bw-prompt');
+    if (prompt) prompt.classList.remove('eizo-bw-active');
+  }
+
+  function showMiniIcon() {
+    const mini = document.getElementById('eizo-bw-mini');
+    if (mini) mini.classList.add('eizo-bw-active');
+  }
+
+  function hideMiniIcon() {
+    const mini = document.getElementById('eizo-bw-mini');
+    if (mini) mini.classList.remove('eizo-bw-active');
   }
 
   async function openModal() {
@@ -584,13 +606,15 @@
 
   async function init() {
     await buildWidget();
+    trackProductView();
 
-    const show = shouldShowPopup();
-    console.log('[EIZO Booking] init', { show, threshold: CONFIG.triggerThreshold });
-    if (show) {
-      setTimeout(showPopup, POPUP_DELAY_MS);
-    } else if (isColorEdgeProduct()) {
-      showFab();
+    const answer = readPromptAnswer();
+    const should = shouldShowPrompt();
+    console.log('[EIZO Booking] init', { template: TEMPLATE, seen: readSeen().length, threshold: CONFIG.triggerThreshold, answer });
+    if (answer === 'no' || answer === 'yes') {
+      showMiniIcon();
+    } else if (should) {
+      setTimeout(showPrompt, POPUP_DELAY_MS);
     }
   }
 

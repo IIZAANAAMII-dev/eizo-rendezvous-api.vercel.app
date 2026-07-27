@@ -1,34 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { NextResponse } from 'next/server';
+import { getAllOrganizers } from '@/config/organizers';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url);
-    const shop = searchParams.get('shop');
-    
-    // Récupérer tous les organisateurs actifs
-    const { data: organizers, error } = await supabase
-      .from('organizers')
-      .select('*')
-      .eq('active', true);
-    
-    if (error) {
-      console.error('[public organizers]', error);
-      return NextResponse.json({ error: 'Failed to fetch organizers' }, { status: 500 });
-    }
-    
-    // Retourner uniquement les organisateurs actifs avec les informations publiques
-    const publicOrganizers = organizers.map(o => ({
-      id: o.id,
-      name: o.name,
-      slug: o.slug,
-      email: o.email,
-      specialty: o.specialty,
-      avatar_url: o.avatar_url,
-      active: o.active,
-    }));
-    
-    return NextResponse.json(publicOrganizers);
+    const organizers = getAllOrganizers();
+    return NextResponse.json(organizers);
   } catch (error) {
     console.error('[public organizers]', error);
     return NextResponse.json({ error: 'Failed to fetch organizers' }, { status: 500 });

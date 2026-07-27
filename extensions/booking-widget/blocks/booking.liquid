@@ -6,63 +6,70 @@
     {
       "type": "text",
       "id": "organizer_slug",
-      "label": "Organizer Slug",
+      "label": "Expert",
       "default": "fred",
-      "info": "The slug of the organizer (e.g., fred)"
+      "info": "Le slug de l'organisateur à afficher (ex: fred)"
     },
     {
       "type": "text",
-      "id": "product",
-      "label": "Product",
-      "default": "default-product",
-      "info": "The product to display (optional)"
+      "id": "api_url",
+      "label": "URL de l'API",
+      "default": "https://votre-domaine.com",
+      "info": "URL de base de votre application Next.js, sans slash final"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_popup",
+      "label": "Popup automatique",
+      "default": true,
+      "info": "Affiche automatiquement la popup après le seuil de consultations"
+    },
+    {
+      "type": "range",
+      "id": "trigger_threshold",
+      "label": "Après",
+      "min": 1,
+      "max": 10,
+      "step": 1,
+      "default": 3,
+      "info": "Nombre de consultations de produits ColorEdge avant déclenchement"
+    },
+    {
+      "type": "text",
+      "id": "coloredge_tag",
+      "label": "Tag ColorEdge",
+      "default": "coloredge",
+      "info": "Tag utilisé pour identifier les produits ColorEdge"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_booking_button",
+      "label": "Afficher \"Prendre rendez-vous\"",
+      "default": true,
+      "info": "Affiche un bouton fixe si la popup est désactivée"
     }
   ]
 }
 {% endschema %}
 
-<div id="eizo-booking-widget" data-organizer="{{ block.settings.organizer_slug }}" data-product="{{ block.settings.product }}">
-  <div class="eizo-loading">Chargement du calendrier...</div>
-</div>
+{% if template == 'product' %}
+  <script id="eizo-booking-widget-data" type="application/json">
+    {
+      "productId": {{ product.id | default: '' | json }},
+      "productTitle": {{ product.title | json }},
+      "productHandle": {{ product.handle | json }},
+      "productTags": {{ product.tags | json }},
+      "productType": {{ product.type | json }},
+      "productVendor": {{ product.vendor | json }},
+      "apiUrl": {{ block.settings.api_url | default: 'https://votre-domaine.com' | json }},
+      "organizerId": {{ block.settings.organizer_slug | default: 'fred' | json }},
+      "showPopup": {{ block.settings.show_popup | default: true | json }},
+      "triggerThreshold": {{ block.settings.trigger_threshold | default: 3 | json }},
+      "coloredgeTag": {{ block.settings.coloredge_tag | default: 'coloredge' | json }},
+      "showBookingButton": {{ block.settings.show_booking_button | default: true | json }},
+      "shopDomain": {{ shop.domain | json }}
+    }
+  </script>
 
-<script src="{{ 'booking.js' | asset_url }}" defer></script>
-
-<style>
-  #eizo-booking-widget {
-    padding: 20px;
-    background: #f9fafb;
-    border-radius: 8px;
-    border: 1px solid #e5e7eb;
-  }
-  .eizo-loading {
-    text-align: center;
-    padding: 40px;
-    color: #6b7280;
-  }
-  .eizo-slots {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 10px;
-    margin-top: 20px;
-  }
-  .eizo-slot {
-    padding: 12px;
-    background: #ffffff;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-align: center;
-    font-size: 14px;
-  }
-  .eizo-slot:hover {
-    background: #008060;
-    color: white;
-    border-color: #008060;
-  }
-  .eizo-error {
-    color: #d72c0d;
-    padding: 20px;
-    text-align: center;
-  }
-</style>
+  <script src="{{ 'eizo-booking-widget.js' | asset_url }}" defer></script>
+{% endif %}

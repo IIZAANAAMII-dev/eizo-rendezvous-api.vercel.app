@@ -238,9 +238,11 @@ export default function BookingCalendarPage() {
                 <div className="grid grid-cols-7 gap-2">
                   {days.map((date, index) => {
                     if (!date) return <div key={index} />;
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
                     const isSelected = selectedDate?.toDateString() === date.toDateString();
-                    const isPast = date < new Date().setHours(0, 0, 0, 0);
-                    const isToday = date.toDateString() === new Date().toDateString();
+                    const isPast = date < today;
+                    const isToday = date.toDateString() === today.toDateString();
 
                     return (
                       <button

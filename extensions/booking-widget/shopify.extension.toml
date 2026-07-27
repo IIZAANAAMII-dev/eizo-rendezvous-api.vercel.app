@@ -6,11 +6,35 @@ uid = "6699e1c5-a4f4-6e5a-2a5b-5670282a82a956819666"
 [[settings.fields]]
 key = "organizer_slug"
 type = "single_line_text"
-name = "Organisateur Slug"
-description = "Le slug de l'organisateur (ex: fred)"
+name = "Expert"
+description = "Sélectionnez l'expert (ex: fred)"
 
 [[settings.fields]]
-key = "product"
+key = "api_url"
 type = "single_line_text"
-name = "Produit"
-description = "Le produit à afficher (optionnel)"
+name = "URL de l'API"
+description = "URL de base de l'application Next.js"
+
+[[settings.fields]]
+key = "show_popup"
+type = "boolean"
+name = "Popup automatique"
+description = "Afficher automatiquement la popup"
+
+[[settings.fields]]
+key = "trigger_threshold"
+type = "number"
+name = "Seuil de consultations ColorEdge"
+description = "Nombre de consultations avant déclenchement"
+
+[[settings.fields]]
+key = "coloredge_tag"
+type = "single_line_text"
+name = "Tag ColorEdge"
+description = "Tag utilisé pour identifier les produits ColorEdge"
+
+[[settings.fields]]
+key = "show_booking_button"
+type = "boolean"
+name = "Afficher le bouton Prendre rendez-vous"
+description = "Affiche un bouton fixe si la popup est désactivée"

@@ -14,7 +14,7 @@
       "type": "text",
       "id": "api_url",
       "label": "URL de l'API",
-      "default": "https://votre-domaine.com",
+      "default": "https://eizo-rendezvous-api-vercel-app.vercel.app",
       "info": "URL de base de votre application Next.js, sans slash final"
     },
     {
@@ -60,7 +60,7 @@
     "productTags": {{ product.tags | default: '' | json }},
     "productType": {{ product.type | default: '' | json }},
     "productVendor": {{ product.vendor | default: '' | json }},
-    "apiUrl": {{ block.settings.api_url | default: 'https://eizo-rendezvous-api.vercel.app' | json }},
+    "apiUrl": {{ block.settings.api_url | default: 'https://eizo-rendezvous-api-vercel-app.vercel.app' | json }},
     "organizerId": {{ block.settings.organizer_slug | default: 'fred' | json }},
     "showPopup": {{ block.settings.show_popup | default: true | json }},
     "triggerThreshold": {{ block.settings.trigger_threshold | default: 3 | json }},

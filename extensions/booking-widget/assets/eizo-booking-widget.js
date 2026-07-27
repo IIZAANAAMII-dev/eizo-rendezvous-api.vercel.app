@@ -25,7 +25,7 @@
   const API_URL = (CONFIG.apiUrl || '').replace(/\/$/, '');
   const ORGANIZER_ID = CONFIG.organizerId || 'fred';
   const COLOR_TAG = (CONFIG.coloredgeTag || 'coloredge').toLowerCase();
-  const POPUP_DELAY_MS = 1200;
+  const POPUP_DELAY_MS = 0;
 
   const state = {
     organizer: null,
@@ -567,11 +567,17 @@
   async function init() {
     await buildWidget();
 
-    if (shouldShowPopup()) {
+    const show = shouldShowPopup();
+    console.log('[EIZO Booking] init', { show, threshold: CONFIG.triggerThreshold });
+    if (show) {
       setTimeout(showPopup, POPUP_DELAY_MS);
     } else if (isColorEdgeProduct()) {
       showFab();
     }
+  }
+
+  function runInit() {
+    init().catch(err => console.error('[EIZO Booking] init error', err));
   }
 
   window.EIZO_BOOKING = {
@@ -580,8 +586,12 @@
   };
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', runInit);
   } else {
-    init();
+    runInit();
   }
+
+  window.addEventListener('pageshow', (e) => {
+    if (e.persisted) runInit();
+  });
 })();

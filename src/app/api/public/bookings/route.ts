@@ -3,8 +3,12 @@ import { getSupabaseClient } from '@/lib/supabase';
 import { getOrganizerConfig } from '@/config/organizers';
 import { timeToMinutes, minutesToTime } from '@/lib/availability';
 import { sendConfirmationEmail, sendOrganizerNotification } from '@/lib/email';
+import { handleCors, withCors } from '@/lib/cors';
 
 export async function POST(request: NextRequest) {
+  const preflight = handleCors(request);
+  if (preflight) return preflight;
+
   try {
     const body = await request.json();
     const {
@@ -22,12 +26,12 @@ export async function POST(request: NextRequest) {
     } = body;
 
     if (!organizerId || !date || !time || !customerName || !customerEmail) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+      return withCors(NextResponse.json({ error: 'Missing required fields' }, { status: 400 }), request);
     }
 
     const organizer = getOrganizerConfig(organizerId);
     if (!organizer) {
-      return NextResponse.json({ error: 'Organizer not found' }, { status: 404 });
+      return withCors(NextResponse.json({ error: 'Organizer not found' }, { status: 404 }), request);
     }
 
     const supabase = getSupabaseClient();
@@ -43,12 +47,12 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (existingBooking) {
-      return NextResponse.json({ error: 'Slot already booked' }, { status: 409 });
+      return withCors(NextResponse.json({ error: 'Slot already booked' }, { status: 409 }), request);
     }
 
     if (checkError && checkError.code !== 'PGRST116') {
       console.error('[public booking] check error:', checkError);
-      return NextResponse.json({ error: 'Failed to check availability' }, { status: 500 });
+      return withCors(NextResponse.json({ error: 'Failed to check availability' }, { status: 500 }), request);
     }
 
     const endMinutes = timeToMinutes(time) + organizer.slotDurationMinutes;
@@ -78,7 +82,7 @@ export async function POST(request: NextRequest) {
 
     if (bookingError) {
       console.error('[public booking] insert error:', bookingError);
-      return NextResponse.json({ error: 'Failed to create booking' }, { status: 500 });
+      return withCors(NextResponse.json({ error: 'Failed to create booking' }, { status: 500 }), request);
     }
 
     // Envoyer les emails
@@ -103,9 +107,9 @@ export async function POST(request: NextRequest) {
       // Don't fail the booking if email fails
     }
 
-    return NextResponse.json(booking);
+    return withCors(NextResponse.json(booking), request);
   } catch (error) {
     console.error('[public booking]', error);
-    return NextResponse.json({ error: 'Failed to create booking' }, { status: 500 });
+    return withCors(NextResponse.json({ error: 'Failed to create booking' }, { status: 500 }), request);
   }
 }

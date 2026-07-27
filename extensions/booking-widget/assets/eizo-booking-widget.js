@@ -55,16 +55,7 @@
   }
 
   function isColorEdgeProduct() {
-    const title = (CONFIG.productTitle || '').toLowerCase();
-    const handle = (CONFIG.productHandle || '').toLowerCase();
-    const type = (CONFIG.productType || '').toLowerCase();
-    const tags = Array.isArray(CONFIG.productTags) ? CONFIG.productTags : [];
-    return (
-      title.includes(COLOR_TAG) ||
-      handle.includes(COLOR_TAG) ||
-      type.includes(COLOR_TAG) ||
-      tags.some(t => t.toLowerCase().includes(COLOR_TAG))
-    );
+    return true; // DEBUG: forcer l'affichage sur tous les produits
   }
 
   function readSeen() {
@@ -582,6 +573,11 @@
       showFab();
     }
   }
+
+  window.EIZO_BOOKING = {
+    open: openModal,
+    close: closeModal,
+  };
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);

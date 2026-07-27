@@ -52,24 +52,23 @@
 }
 {% endschema %}
 
-{% if template == 'product' %}
-  <script id="eizo-booking-widget-data" type="application/json">
-    {
-      "productId": {{ product.id | default: '' | json }},
-      "productTitle": {{ product.title | json }},
-      "productHandle": {{ product.handle | json }},
-      "productTags": {{ product.tags | json }},
-      "productType": {{ product.type | json }},
-      "productVendor": {{ product.vendor | json }},
-      "apiUrl": {{ block.settings.api_url | default: 'https://votre-domaine.com' | json }},
-      "organizerId": {{ block.settings.organizer_slug | default: 'fred' | json }},
-      "showPopup": {{ block.settings.show_popup | default: true | json }},
-      "triggerThreshold": {{ block.settings.trigger_threshold | default: 3 | json }},
-      "coloredgeTag": {{ block.settings.coloredge_tag | default: 'coloredge' | json }},
-      "showBookingButton": {{ block.settings.show_booking_button | default: true | json }},
-      "shopDomain": {{ shop.domain | json }}
-    }
-  </script>
+<script id="eizo-booking-widget-data" type="application/json">
+  {
+    "productId": {{ product.id | default: '' | json }},
+    "productTitle": {{ product.title | default: '' | json }},
+    "productHandle": {{ product.handle | default: '' | json }},
+    "productTags": {{ product.tags | default: '' | json }},
+    "productType": {{ product.type | default: '' | json }},
+    "productVendor": {{ product.vendor | default: '' | json }},
+    "apiUrl": {{ block.settings.api_url | default: 'https://eizo-rendezvous-api.vercel.app' | json }},
+    "organizerId": {{ block.settings.organizer_slug | default: 'fred' | json }},
+    "showPopup": {{ block.settings.show_popup | default: true | json }},
+    "triggerThreshold": {{ block.settings.trigger_threshold | default: 3 | json }},
+    "coloredgeTag": {{ block.settings.coloredge_tag | default: 'coloredge' | json }},
+    "showBookingButton": {{ block.settings.show_booking_button | default: true | json }},
+    "shopDomain": {{ shop.domain | json }},
+    "template": {{ template | json }}
+  }
+</script>
 
-  <script src="{{ 'eizo-booking-widget.js' | asset_url }}" defer></script>
-{% endif %}
+<script src="{{ 'eizo-booking-widget.js' | asset_url }}" defer></script>

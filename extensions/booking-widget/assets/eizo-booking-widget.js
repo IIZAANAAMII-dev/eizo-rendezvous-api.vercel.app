@@ -25,6 +25,7 @@
   const API_URL = (CONFIG.apiUrl || '').replace(/\/$/, '');
   const ORGANIZER_ID = CONFIG.organizerId || 'fred';
   const COLOR_TAG = (CONFIG.coloredgeTag || 'coloredge').toLowerCase();
+  const TEMPLATE = CONFIG.template || '';
   const POPUP_DELAY_MS = 0;
 
   const state = {
@@ -55,7 +56,8 @@
   }
 
   function isColorEdgeProduct() {
-    return true; // DEBUG: forcer l'affichage sur tous les produits
+    // Forcer temporairement l'affichage sur les collections/pages hors produit
+    return TEMPLATE !== 'product';
   }
 
   function readSeen() {
@@ -80,21 +82,23 @@
     try { LS.setItem(POPUP_CLOSED_KEY, 'true'); } catch {}
   }
 
-  function trackProductView() {
+  function trackView() {
     if (!isColorEdgeProduct()) return 0;
-    const handle = CONFIG.productHandle || '';
-    const seen = readSeen().filter(h => h !== handle);
-    seen.push(handle);
+    const key = CONFIG.productHandle || TEMPLATE || window.location.pathname || '';
+    if (!key) return 0;
+    const seen = readSeen().filter(h => h !== key);
+    seen.push(key);
     saveSeen(seen);
     return seen.length;
   }
 
   function shouldShowPopup() {
     if (!CONFIG.showPopup) return false;
+    if (TEMPLATE === 'product') return false;
     if (!isColorEdgeProduct()) return false;
     if (isPopupClosed()) return false;
     const threshold = parseInt(CONFIG.triggerThreshold || '3', 10);
-    const count = trackProductView();
+    const count = trackView();
     return count >= threshold;
   }
 
@@ -150,19 +154,23 @@
       .eizo-bw-hidden { display: none !important; }
       .eizo-bw-popup {
         position: fixed; bottom: 24px; right: 24px; z-index: 9000;
-        width: min(360px, calc(100vw - 32px));
+        width: min(420px, calc(100vw - 32px));
         background: var(--eizo-white); border-radius: var(--eizo-radius);
-        box-shadow: var(--eizo-shadow-lg); padding: 24px;
+        box-shadow: var(--eizo-shadow-lg); padding: 22px;
         opacity: 0; transform: translateY(16px) scale(0.97);
         transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.16,1,0.3,1);
         pointer-events: none;
       }
       .eizo-bw-popup.eizo-bw-active { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
-      .eizo-bw-popup-close { position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; border: none; background: transparent; border-radius: 50%; cursor: pointer; color: var(--eizo-muted); font-size: 18px; line-height: 1; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+      .eizo-bw-popup-close { position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; border: none; background: transparent; border-radius: 50%; cursor: pointer; color: var(--eizo-muted); font-size: 20px; line-height: 1; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
       .eizo-bw-popup-close:hover { background: var(--eizo-bg); color: var(--eizo-text); }
-      .eizo-bw-popup-title { font-size: 17px; font-weight: 700; color: var(--eizo-text); margin: 0 0 8px; padding-right: 24px; }
-      .eizo-bw-popup-subtitle { font-size: 14px; color: var(--eizo-muted); margin: 0 0 18px; line-height: 1.5; }
-      .eizo-bw-popup-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 20px; border: none; border-radius: 10px; background: var(--eizo-primary); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; transition: filter 0.2s, transform 0.2s; }
+      .eizo-bw-popup-header { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+      .eizo-bw-popup-avatar { width: 52px; height: 52px; border-radius: 50%; background: var(--eizo-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 600; flex-shrink: 0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,102,204,0.2); }
+      .eizo-bw-popup-avatar img { width: 100%; height: 100%; object-fit: cover; }
+      .eizo-bw-popup-title { font-size: 17px; font-weight: 700; color: var(--eizo-text); margin: 0 0 2px; padding-right: 24px; }
+      .eizo-bw-popup-subtitle { font-size: 13px; color: var(--eizo-primary); font-weight: 600; margin: 0; }
+      .eizo-bw-popup-text { font-size: 14px; color: var(--eizo-muted); margin: 0 0 18px; line-height: 1.5; }
+      .eizo-bw-popup-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 22px; border: none; border-radius: 10px; background: var(--eizo-primary); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; transition: filter 0.2s, transform 0.2s; }
       .eizo-bw-popup-btn:hover { filter: brightness(0.93); transform: translateY(-1px); }
       .eizo-bw-fab { position: fixed; bottom: 24px; right: 24px; z-index: 9000; padding: 14px 20px; border: none; border-radius: 50px; background: var(--eizo-primary); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: var(--eizo-shadow); opacity: 0; transform: translateY(10px); transition: opacity 0.3s, transform 0.3s; }
       .eizo-bw-fab.eizo-bw-active { opacity: 1; transform: translateY(0); }
@@ -222,7 +230,7 @@
       .eizo-bw-success-text { font-size: 15px; color: var(--eizo-muted); line-height: 1.5; }
       .eizo-bw-error { padding: 14px; border-radius: 10px; background: #FEF2F2; color: var(--eizo-danger); font-size: 14px; margin-bottom: 16px; }
       @media (max-width: 740px) {
-        .eizo-bw-popup { left: 16px; right: 16px; bottom: 16px; width: auto; }
+        .eizo-bw-popup { left: 16px; right: 16px; bottom: 16px; width: auto; padding: 18px; }
         .eizo-bw-modal { width: 100%; height: 100%; max-height: none; border-radius: 0; grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
         .eizo-bw-sidebar { border-right: none; border-bottom: 1px solid var(--eizo-border); padding: 20px 24px; display: flex; align-items: center; gap: 18px; }
         .eizo-bw-avatar { width: 56px; height: 56px; font-size: 18px; margin-bottom: 0; flex-shrink: 0; }
@@ -246,6 +254,10 @@
       return null;
     });
 
+    const org = state.organizer || {};
+    const popupAvatar = org.avatar_url
+      ? `<img src="${escapeHtml(org.avatar_url)}" alt="${escapeHtml(org.name || 'Expert')}">`
+      : getInitials(org.name || 'EIZO');
     const popup = document.createElement('div');
     popup.id = 'eizo-bw-popup';
     popup.className = 'eizo-bw-popup';
@@ -253,9 +265,15 @@
     popup.setAttribute('aria-label', 'Prendre rendez-vous');
     popup.innerHTML = `
       <button class="eizo-bw-popup-close" aria-label="Fermer">×</button>
-      <h3 class="eizo-bw-popup-title">Besoin d'aide pour choisir votre écran ?</h3>
-      <p class="eizo-bw-popup-subtitle">Réservez une démonstration personnalisée avec l'un de nos experts EIZO.</p>
-      <button class="eizo-bw-popup-btn" type="button" id="eizo-bw-popup-cta">Réserver une démonstration</button>
+      <div class="eizo-bw-popup-header">
+        <div class="eizo-bw-popup-avatar">${popupAvatar}</div>
+        <div class="eizo-bw-popup-meta">
+          <h3 class="eizo-bw-popup-title">Réserver une démonstration</h3>
+          <p class="eizo-bw-popup-subtitle">Avec ${escapeHtml(org.name || 'nos experts EIZO')}</p>
+        </div>
+      </div>
+      <p class="eizo-bw-popup-text">Besoin d'aide pour choisir votre écran ColorEdge ? Réservez un créneau personnalisé.</p>
+      <button class="eizo-bw-popup-btn" type="button" id="eizo-bw-popup-cta">Choisir un créneau</button>
     `;
 
     const fab = document.createElement('button');

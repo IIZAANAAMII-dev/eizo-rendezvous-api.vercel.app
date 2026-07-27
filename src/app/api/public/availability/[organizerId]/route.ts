@@ -21,22 +21,26 @@ export async function GET(
       return NextResponse.json({ error: 'Organizer not found' }, { status: 404 });
     }
 
-    const supabase = getSupabaseClient();
-
-    // Récupérer les créneaux déjà réservés pour cette date et cet organisateur
-    const { data: bookings, error: bookingsError } = await supabase
-      .from('bookings')
-      .select('start_time')
-      .eq('organizer_id', organizer.id)
-      .eq('date', date)
-      .neq('status', 'cancelled');
-
-    if (bookingsError) {
-      console.error('[public availability] bookings fetch error:', bookingsError);
-      return NextResponse.json({ error: 'Failed to fetch bookings' }, { status: 500 });
+    // Récupérer les créneaux déjà réservés (fallback si Supabase n'est pas prêt)
+    let bookings: any[] = [];
+    try {
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('start_time')
+        .eq('organizer_id', organizer.id)
+        .eq('date', date)
+        .neq('status', 'cancelled');
+      if (error) {
+        console.error('[public availability] bookings fetch error:', error);
+      } else {
+        bookings = data || [];
+      }
+    } catch (err) {
+      console.error('[public availability] supabase unavailable, returning all slots:', err);
     }
 
-    const bookedStartTimes = (bookings || []).map((b: any) => b.start_time.slice(0, 5));
+    const bookedStartTimes = bookings.map((b: any) => b.start_time.slice(0, 5));
     const slots = generateSlotsForDate(date, organizer, bookedStartTimes);
 
     return NextResponse.json({ slots });

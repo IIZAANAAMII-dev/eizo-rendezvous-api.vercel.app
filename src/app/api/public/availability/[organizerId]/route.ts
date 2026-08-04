@@ -64,17 +64,21 @@ export async function GET(
     };
 
     // Récupérer les dates indisponibles (congés, exceptions)
-    const { data: exceptions, error: exceptionsError } = await supabase
-      .from('availability_exceptions')
-      .select('date')
-      .eq('organizer_id', organizer.id)
-      .eq('type', 'unavailable');
+    let unavailableDates: string[] = [];
+    try {
+      const { data: exceptions, error: exceptionsError } = await supabase
+        .from('availability_exceptions')
+        .select('date')
+        .eq('organizer_id', organizer.id);
 
-    if (exceptionsError) {
-      console.error('[public availability] exceptions fetch error:', exceptionsError);
+      if (exceptionsError) {
+        console.error('[public availability] exceptions fetch error:', exceptionsError);
+      } else {
+        unavailableDates = (exceptions || []).map((e: any) => e.date);
+      }
+    } catch (err) {
+      console.error('[public availability] exceptions unavailable, ignoring:', err);
     }
-
-    const unavailableDates = (exceptions || []).map((e: any) => e.date);
 
     // Récupérer les créneaux déjà réservés
     let bookings: any[] = [];

@@ -37,25 +37,16 @@ export function generateSlotsForDate(
   }
 
   const slots: Slot[] = [];
-  const duration = organizer.slot_duration_minutes;
-  const buffer = organizer.buffer_minutes;
-  const step = duration + buffer;
 
   for (const range of workingSlots) {
-    const rangeStart = timeToMinutes(range.start);
-    const rangeEnd = timeToMinutes(range.end);
-
-    for (let current = rangeStart; current + duration <= rangeEnd; current += step) {
-      const start = minutesToTime(current);
-      const end = minutesToTime(current + duration);
-
-      slots.push({
-        time: start,
-        start,
-        end,
-        available: !bookedStartTimes.includes(start),
-      });
-    }
+    const start = range.start;
+    const end = range.end;
+    slots.push({
+      time: start,
+      start,
+      end,
+      available: !bookedStartTimes.includes(start),
+    });
   }
 
   return slots;

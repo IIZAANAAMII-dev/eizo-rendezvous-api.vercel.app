@@ -57,8 +57,11 @@
   }
 
   function isColorEdgeProduct() {
-    // DEBUG : compte toutes les consultations produit comme ColorEdge
-    return true;
+    const tags = (CONFIG.productTags || '').toLowerCase().split(',').map(t => t.trim());
+    const isTag = tags.includes(COLOR_TAG);
+    const isCollection = (CONFIG.collectionHandle || '').toLowerCase().includes(COLOR_TAG);
+    const isVendor = (CONFIG.productVendor || '').toLowerCase().includes('eizo') || (CONFIG.productType || '').toLowerCase().includes('coloredge');
+    return isTag || isCollection || isVendor;
   }
 
   function readSeen() {
@@ -84,8 +87,9 @@
   }
 
   function trackProductView() {
-    if (TEMPLATE !== 'product' || !isColorEdgeProduct()) return;
-    const handle = CONFIG.productHandle || TEMPLATE;
+    const isRelevant = TEMPLATE === 'product' || TEMPLATE === 'collection';
+    if (!isRelevant || !isColorEdgeProduct()) return;
+    const handle = CONFIG.productHandle || CONFIG.collectionHandle || TEMPLATE;
     const seen = readSeen().filter(h => h !== handle);
     seen.push(handle);
     saveSeen(seen);
@@ -219,14 +223,27 @@
       .eizo-bw-success-title { font-size: 22px; font-weight: 700; color: var(--eizo-text); margin: 0 0 10px; }
       .eizo-bw-success-text { font-size: 15px; color: var(--eizo-muted); line-height: 1.5; }
       .eizo-bw-error { padding: 14px; border-radius: 10px; background: #FEF2F2; color: var(--eizo-danger); font-size: 14px; margin-bottom: 16px; }
+      .eizo-bw-title-group { margin-bottom: 4px; }
+      .eizo-bw-profile { margin-top: 16px; }
+      .eizo-bw-profile-section { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--eizo-border); }
+      .eizo-bw-profile-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+      .eizo-bw-profile-label { font-size: 13px; font-weight: 700; color: var(--eizo-text); margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.4px; }
+      .eizo-bw-profile-line { font-size: 13px; line-height: 1.55; color: var(--eizo-muted); margin: 0 0 6px; }
+      .eizo-bw-profile-line.eizo-bw-mute { color: #8B95A8; }
+      .eizo-bw-link { color: var(--eizo-primary); text-decoration: none; font-weight: 500; }
+      .eizo-bw-link:hover { text-decoration: underline; }
+      .eizo-bw-logos { margin-top: auto; padding-top: 12px; }
+      .eizo-bw-logos-wrap { display: flex; align-items: center; justify-content: center; gap: 16px; background: #fff; border-radius: 12px; padding: 16px; border: 1px solid var(--eizo-border); }
+      .eizo-bw-logo { max-height: 42px; width: auto; max-width: 100%; object-fit: contain; }
       @media (max-width: 740px) {
         .eizo-bw-prompt { padding: 12px; }
         .eizo-bw-prompt-card { padding: 22px; }
         .eizo-bw-mini { left: 16px; bottom: 16px; width: 48px; height: 48px; font-size: 22px; }
         .eizo-bw-modal { width: 100%; height: 100%; max-height: none; border-radius: 0; grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
-        .eizo-bw-sidebar { border-right: none; border-bottom: 1px solid var(--eizo-border); padding: 20px 24px; display: flex; align-items: center; gap: 18px; }
+        .eizo-bw-sidebar { border-right: none; border-bottom: 1px solid var(--eizo-border); padding: 20px 24px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
         .eizo-bw-avatar { width: 56px; height: 56px; font-size: 18px; margin-bottom: 0; flex-shrink: 0; }
-        .eizo-bw-description { display: none; }
+        .eizo-bw-profile { display: none; }
+        .eizo-bw-logos { display: none; }
         .eizo-bw-main { padding: 22px; min-height: auto; }
         .eizo-bw-form-row { grid-template-columns: 1fr; }
         .eizo-bw-calendar { gap: 6px; }
@@ -283,11 +300,12 @@
         <button class="eizo-bw-close" aria-label="Fermer">×</button>
         <aside class="eizo-bw-sidebar">
           <div class="eizo-bw-avatar" id="eizo-bw-avatar"></div>
-          <div>
+          <div class="eizo-bw-title-group">
             <h3 class="eizo-bw-name" id="eizo-bw-name"></h3>
             <p class="eizo-bw-specialty" id="eizo-bw-specialty"></p>
           </div>
-          <p class="eizo-bw-description" id="eizo-bw-description"></p>
+          <div class="eizo-bw-profile" id="eizo-bw-profile"></div>
+          <div class="eizo-bw-logos" id="eizo-bw-logos"></div>
         </aside>
         <div class="eizo-bw-main">
           <div class="eizo-bw-step eizo-bw-active" id="eizo-bw-step-calendar">
@@ -360,17 +378,54 @@
     const avatar = document.getElementById('eizo-bw-avatar');
     const name = document.getElementById('eizo-bw-name');
     const specialty = document.getElementById('eizo-bw-specialty');
-    const description = document.getElementById('eizo-bw-description');
-    if (!org || !avatar) return;
+    const profile = document.getElementById('eizo-bw-profile');
+    const logos = document.getElementById('eizo-bw-logos');
+    const mediaBaseUrl = CONFIG.mediaBaseUrl || '';
 
-    name.textContent = org.name;
-    specialty.textContent = org.specialty || 'Expert EIZO';
-    description.textContent = org.description || '';
+    if (!avatar) return;
 
-    if (org.avatar_url) {
-      avatar.innerHTML = `<img src="${escapeHtml(org.avatar_url)}" alt="${escapeHtml(org.name)}">`;
+    name.textContent = org?.name || 'Fred ROL';
+    specialty.textContent = org?.specialty || 'ColorEdge';
+
+    // Photo par défaut
+    const avatarUrl = org?.avatar_url || (mediaBaseUrl ? `${mediaBaseUrl}/image.png` : '');
+    if (avatarUrl) {
+      avatar.innerHTML = `<img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(name.textContent)}">`;
     } else {
-      avatar.textContent = getInitials(org.name);
+      avatar.textContent = getInitials(name.textContent);
+    }
+
+    if (profile) {
+      profile.innerHTML = `
+        <div class="eizo-bw-profile-section">
+          <p class="eizo-bw-profile-line">Rendez-vous 1 heure</p>
+          <p class="eizo-bw-profile-line">Paris (Magasin Prophot)</p>
+          <p class="eizo-bw-profile-line eizo-bw-mute">Mardi et Vendredi</p>
+          <p class="eizo-bw-profile-line eizo-bw-mute">09h30 - 12h30 / 14h - 17h</p>
+        </div>
+        <div class="eizo-bw-profile-section">
+          <p class="eizo-bw-profile-label">Votre expert</p>
+          <p class="eizo-bw-profile-line">Ingénieur Avant-vente & Après-vente</p>
+          <p class="eizo-bw-profile-line">Solutions Graphiques</p>
+          <p class="eizo-bw-profile-line">Pre-Sales & After-Sales Graphic Solutions Engineer</p>
+        </div>
+        <div class="eizo-bw-profile-section">
+          <p class="eizo-bw-profile-line"><a href="tel:+33634416976" class="eizo-bw-link">Mobile +33 6 34 41 69 76</a></p>
+          <p class="eizo-bw-profile-line"><a href="mailto:fred.rol@feeder.fr" class="eizo-bw-link">fred.rol@feeder.fr</a></p>
+          <p class="eizo-bw-profile-line"><a href="mailto:fred@eizo.fr" class="eizo-bw-link">fred@eizo.fr</a></p>
+          <p class="eizo-bw-profile-line eizo-bw-mute">12 rue Paul Dautier - 78140 Vélizy Villacoublay</p>
+          <p class="eizo-bw-profile-line eizo-bw-mute">Standard +33 4 42 15 84 00</p>
+          <p class="eizo-bw-profile-line eizo-bw-mute">www.feeder.fr - www.eizo.fr</p>
+        </div>
+      `;
+    }
+
+    if (logos && mediaBaseUrl) {
+      logos.innerHTML = `
+        <div class="eizo-bw-logos-wrap">
+          <img src="${escapeHtml(mediaBaseUrl)}/telechargement.png" alt="Feeder - EIZO France" class="eizo-bw-logo">
+        </div>
+      `;
     }
   }
 
@@ -457,6 +512,15 @@
     renderCalendar(state.currentMonth);
   }
 
+  function getWorkingDays() {
+    const wd = state.organizer?.working_days;
+    if (wd && typeof wd === 'object') {
+      return Object.keys(wd).map(Number).filter(Boolean);
+    }
+    // Fallback mardi et vendredi
+    return [2, 5];
+  }
+
   function renderCalendar(monthDate) {
     const year = monthDate.getFullYear();
     const month = monthDate.getMonth();
@@ -466,6 +530,7 @@
     const startOffset = firstDay.getDay();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const workingDays = getWorkingDays();
 
     const monthLabel = document.getElementById('eizo-bw-month');
     monthLabel.textContent = new Date(year, month).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
@@ -491,15 +556,16 @@
       const dateStr = dateObj.toISOString().split('T')[0];
       const isPast = dateObj < today;
       const isToday = dateObj.getTime() === today.getTime();
+      const isWorkingDay = workingDays.includes(dateObj.getDay());
       const classes = ['eizo-bw-day'];
-      if (isPast) classes.push('eizo-bw-disabled');
+      if (isPast || !isWorkingDay) classes.push('eizo-bw-disabled');
       if (isToday) classes.push('eizo-bw-today');
       if (state.selectedDate === dateStr) classes.push('eizo-bw-selected');
 
       const cell = document.createElement('div');
       cell.className = classes.join(' ');
       cell.textContent = day;
-      if (!isPast) {
+      if (!isPast && isWorkingDay) {
         cell.addEventListener('click', () => {
           state.selectedDate = dateStr;
           renderCalendar(monthDate);
@@ -526,30 +592,35 @@
       area.innerHTML = `
         <h3 class="eizo-bw-slots-title">${available.length} créneau${available.length > 1 ? 'x' : ''} disponible${available.length > 1 ? 's' : ''}</h3>
         <div class="eizo-bw-slots">
-          ${available.map(slot => `<button type="button" class="eizo-bw-slot" data-time="${slot.time}">${slot.time}</button>`).join('')}
+          ${available.map(slot => {
+            const label = slot.end ? `${slot.start} - ${slot.end}` : slot.time;
+            return `<button type="button" class="eizo-bw-slot" data-time="${slot.time}" data-start="${slot.start || slot.time}" data-end="${slot.end || slot.time}">${label}</button>`;
+          }).join('')}
         </div>
       `;
 
       area.querySelectorAll('.eizo-bw-slot').forEach(btn => {
-        btn.addEventListener('click', () => selectSlot(date, btn.dataset.time));
+        btn.addEventListener('click', () => selectSlot(date, btn.dataset.time, btn.dataset.end));
       });
     } catch (err) {
       area.innerHTML = '<p style="color: var(--eizo-danger); font-size: 14px;">Impossible de charger les créneaux.</p>';
     }
   }
 
-  function selectSlot(date, time) {
+  function selectSlot(date, time, endTime) {
     state.selectedDate = date;
     state.selectedSlot = time;
-    showForm(date, time);
+    state.selectedSlotEnd = endTime;
+    showForm(date, time, endTime);
   }
 
   function showCalendar() {
     showStep('eizo-bw-step-calendar');
   }
 
-  function showForm(date, time) {
-    const datetime = `${formatDate(date)} à ${time}`;
+  function showForm(date, time, endTime) {
+    const display = endTime ? `${time} - ${endTime}` : time;
+    const datetime = `${formatDate(date)} de ${display}`;
     document.getElementById('eizo-bw-selected-datetime').textContent = datetime;
     document.getElementById('eizo-bw-error').classList.add('eizo-bw-hidden');
     showStep('eizo-bw-step-form');

@@ -50,13 +50,20 @@ export async function GET(request: NextRequest) {
 
     const { data: booking, error } = await supabase
       .from('bookings')
-      .select('*, organizer:organizer_id(name, email)')
+      .select('*')
       .eq('confirmation_token', token)
       .single();
 
     if (error || !booking) {
+      console.error('[validate booking] find error:', error);
       return withCors(NextResponse.json({ error: 'Booking not found' }, { status: 404 }), request);
     }
+
+    const { data: organizer } = await supabase
+      .from('organizers')
+      .select('name, email')
+      .eq('id', booking.organizer_id)
+      .single();
 
     if (booking.status === 'cancelled') {
       return htmlResponse('Rendez-vous déjà annulé', 'Ce rendez-vous a déjà été refusé.');
@@ -84,8 +91,8 @@ export async function GET(request: NextRequest) {
           customerEmail: booking.customer_email,
           date: booking.date,
           time: booking.start_time.slice(0, 5),
-          organizerName: booking.organizer?.name || 'Expert EIZO',
-          organizerEmail: booking.organizer?.email || '',
+          organizerName: organizer?.name || 'Expert EIZO',
+          organizerEmail: organizer?.email || '',
           productTitle: booking.product_title || undefined,
         });
       } catch (emailError) {

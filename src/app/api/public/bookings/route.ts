@@ -71,8 +71,8 @@ export async function POST(request: NextRequest) {
     // Générer le token de confirmation
     const confirmationToken = randomUUID();
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://eizo-rendezvous-api-vercel-app.vercel.app';
-    const acceptUrl = `${appUrl}/api/public/bookings/validate?token=${confirmationToken}&action=accept`;
-    const declineUrl = `${appUrl}/api/public/bookings/validate?token=${confirmationToken}&action=decline`;
+    const acceptUrl = `${appUrl}/api/public/booking-validate?token=${confirmationToken}&action=accept`;
+    const declineUrl = `${appUrl}/api/public/booking-validate?token=${confirmationToken}&action=decline`;
 
     // Créer la réservation en attente de validation
     const { data: booking, error: bookingError } = await supabase

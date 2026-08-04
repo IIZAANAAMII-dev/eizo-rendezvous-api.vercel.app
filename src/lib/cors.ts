@@ -40,5 +40,6 @@ export function withCors(response: NextResponse, request: NextRequest): NextResp
   Object.entries(headers).forEach(([key, value]) => {
     response.headers.set(key, value);
   });
+  response.headers.set('Cache-Control', 'no-store, max-age=0, must-revalidate');
   return response;
 }

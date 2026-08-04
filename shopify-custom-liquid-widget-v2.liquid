@@ -45,6 +45,7 @@
   #eizo-booking-widget .eizo-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
   #eizo-booking-widget .eizo-slot { padding: 12px; border: 1.5px solid #E3E8EF; background: #fff; border-radius: 10px; text-align: center; cursor: pointer; font-weight: 600; }
   #eizo-booking-widget .eizo-slot:hover { border-color: #0066CC; color: #0066CC; background: rgba(0,102,204,0.05); }
+  #eizo-booking-widget .eizo-slot.eizo-disabled { color: #9CA3AF; background: #F3F4F6; border-color: #E5E7EB; cursor: not-allowed; opacity: 0.7; }
   #eizo-booking-widget .eizo-form { margin-top: 20px; }
   #eizo-booking-widget .eizo-form h4 { margin: 0 0 6px; }
   #eizo-booking-widget .eizo-form p { color: #5E6A7E; margin: 0 0 18px; }
@@ -57,8 +58,10 @@
   #eizo-booking-widget .eizo-prompt { display: none; position: fixed; inset: 0; z-index: 10000; align-items: center; justify-content: center; background: rgba(11,18,32,0.45); backdrop-filter: blur(4px); padding: 16px; }
   #eizo-booking-widget .eizo-prompt.active { display: flex; }
   #eizo-booking-widget .eizo-prompt-card { width: min(420px, 100%); background: #fff; border-radius: 20px; box-shadow: 0 25px 60px rgba(0,0,0,0.18); padding: 32px; text-align: center; }
-  #eizo-booking-widget .eizo-prompt-title { font-size: 22px; font-weight: 700; margin: 0 0 10px; }
-  #eizo-booking-widget .eizo-prompt-text { color: #5E6A7E; font-size: 15px; line-height: 1.5; margin: 0 0 24px; }
+  #eizo-booking-widget .eizo-prompt-kicker { color: #0066CC; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 8px; }
+  #eizo-booking-widget .eizo-prompt-title { font-size: 20px; font-weight: 700; margin: 0 0 12px; }
+  #eizo-booking-widget .eizo-prompt-text { color: #5E6A7E; font-size: 15px; line-height: 1.55; margin: 0 0 24px; }
+  #eizo-booking-widget .eizo-prompt-small { color: #9CA3AF; font-size: 12px; line-height: 1.5; margin: 16px 0 0; }
   #eizo-booking-widget .eizo-prompt-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
   #eizo-booking-widget .eizo-prompt-btn { padding: 12px 24px; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
   #eizo-booking-widget .eizo-prompt-btn-primary { background: #0066CC; color: #fff; }
@@ -72,16 +75,18 @@
 </style>
 
 <div id="eizo-booking-widget">
-  <button class="eizo-trigger" id="eizo-trigger" type="button">📅 Prendre rendez-vous</button>
+  <button class="eizo-trigger" id="eizo-trigger" type="button" style="display:none;" aria-hidden="true">📅 Prendre rendez-vous</button>
 
   <div class="eizo-prompt" id="eizo-prompt">
     <div class="eizo-prompt-card">
-      <h3 class="eizo-prompt-title">Vous consultez nos ColorEdge ?</h3>
-      <p class="eizo-prompt-text">Voulez-vous planifier une démonstration personnalisée avec Fred ROL ?</p>
+      <p class="eizo-prompt-kicker">Un accompagnement personnalisé</p>
+      <h3 class="eizo-prompt-title">Vous êtes intéressé par ColorEdge ?</h3>
+      <p class="eizo-prompt-text">Nos experts sont à votre disposition pour vous aider à choisir le moniteur adapté à vos besoins. C’est sans engagement.</p>
       <div class="eizo-prompt-actions">
-        <button class="eizo-prompt-btn eizo-prompt-btn-primary" id="eizo-prompt-yes" type="button">Oui, choisir un créneau</button>
-        <button class="eizo-prompt-btn eizo-prompt-btn-secondary" id="eizo-prompt-no" type="button">Non, merci</button>
+        <button class="eizo-prompt-btn eizo-prompt-btn-primary" id="eizo-prompt-yes" type="button">Choisir un créneau</button>
+        <button class="eizo-prompt-btn eizo-prompt-btn-secondary" id="eizo-prompt-no" type="button">Plus tard</button>
       </div>
+      <p class="eizo-prompt-small">Rendez-vous de 1h à Paris (Prophot) avec Fred ROL, expert ColorEdge.</p>
     </div>
   </div>
 
@@ -100,7 +105,8 @@
             <p class="eizo-profile-line">Rendez-vous 1 heure</p>
             <p class="eizo-profile-line">Paris (Magasin Prophot)</p>
             <p class="eizo-profile-line eizo-mute">Mardi et Vendredi</p>
-            <p class="eizo-profile-line eizo-mute">09h30 - 12h30 / 14h - 17h</p>
+            <p class="eizo-profile-line eizo-mute">09h30 - 10h30 / 12h - 13h</p>
+            <p class="eizo-profile-line eizo-mute">14h - 15h / 16h30 - 17h30</p>
           </div>
           <div class="eizo-profile-section">
             <p class="eizo-profile-label">Votre expert</p>
@@ -147,17 +153,17 @@
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
             <div>
               <label for="eizo-firstName">Prénom *</label>
-              <input id="eizo-firstName" name="firstName" required placeholder="Jean">
+              <input id="eizo-firstName" name="firstName" required placeholder="Votre prénom">
             </div>
             <div>
               <label for="eizo-lastName">Nom *</label>
-              <input id="eizo-lastName" name="lastName" required placeholder="Dupont">
+              <input id="eizo-lastName" name="lastName" required placeholder="Votre nom">
             </div>
           </div>
           <label for="eizo-email">Email *</label>
-          <input id="eizo-email" name="email" type="email" required placeholder="jean@example.com">
+          <input id="eizo-email" name="email" type="email" required placeholder="votre@email.com">
           <label for="eizo-phone">Téléphone</label>
-          <input id="eizo-phone" name="phone" placeholder="+33 6 12 34 56 78">
+          <input id="eizo-phone" name="phone" placeholder="Votre numéro de téléphone">
           <label for="eizo-notes">Notes / Questions</label>
           <textarea id="eizo-notes" name="notes" rows="3" placeholder="Décrivez votre besoin..."></textarea>
           <button type="submit">Confirmer le rendez-vous</button>
@@ -206,16 +212,22 @@
   }
   function formatTime(t) { return (t || '').toString().slice(0,5); }
 
+  const PRODUCT_COLLECTIONS = [{% for c in product.collections %}"{{ c.handle | escape }}"{% unless forloop.last %},{% endunless %}{% endfor %}];
+
   function isColorEdgePage() {
     const template = {{ template | json }};
     const collection = {{ collection.handle | default: '' | json }};
     const tags = {{ product.tags | default: '' | json }};
     const vendor = {{ product.vendor | default: '' | json }};
     const type = {{ product.type | default: '' | json }};
+    const inColoredgeCollection = PRODUCT_COLLECTIONS.some(h => h.toLowerCase().includes('coloredge'));
+    const isColoredgeUrl = (window.location.pathname || '').toLowerCase().includes('coloredge');
     return (
-      template === 'product' && (tags.toLowerCase().includes('coloredge') || vendor.toLowerCase().includes('eizo') || type.toLowerCase().includes('coloredge'))
+      template === 'product' && (inColoredgeCollection || isColoredgeUrl || tags.toLowerCase().includes('coloredge') || vendor.toLowerCase().includes('eizo') || type.toLowerCase().includes('coloredge'))
     ) || (
       template === 'collection' && (collection || '').toLowerCase().includes('coloredge')
+    ) || (
+      isColoredgeUrl
     );
   }
 
@@ -228,10 +240,25 @@
   function readPrompt() { try { return localStorage.getItem(PROMPT_KEY); } catch { return null; } }
   function markPrompt(v) { try { localStorage.setItem(PROMPT_KEY, v); } catch {} }
 
+  function getPageHandle() {
+    const template = {{ template | json }};
+    const productHandle = {{ product.handle | default: '' | json }};
+    const collectionHandle = {{ collection.handle | default: '' | json }};
+    if (template === 'product' && productHandle) return `product:${productHandle}`;
+    if (template === 'collection' && collectionHandle) return `collection:${collectionHandle}`;
+    return null;
+  }
+
   function trackView() {
     if (!isColorEdgePage()) return;
+    const handle = getPageHandle();
     const seen = readSeen();
-    seen.push(Date.now());
+    // On compte chaque vue ColorEdge (même le même produit cliqué plusieurs fois),
+    // mais on évite de spammer si la page est juste rechargée rapidement
+    const last = seen[seen.length - 1];
+    const now = Date.now();
+    if (last && now - last < 1500) return;
+    seen.push(now);
     saveSeen(seen);
   }
 
@@ -241,15 +268,14 @@
   }
 
   async function fetchSlots(date) {
-    if (state.monthData[date]) return { slots: state.monthData[date] };
-    const res = await fetch(`${API_URL}/api/public/availability/${encodeURIComponent(ORGANIZER_ID)}?date=${date}`);
+    const res = await fetch(`${API_URL}/api/public/availability/${encodeURIComponent(ORGANIZER_ID)}?date=${date}&t=${Date.now()}`);
     if (!res.ok) throw new Error('Failed to load slots');
     return res.json();
   }
 
   async function fetchMonth(year, month) {
     const key = `${year}-${pad(month + 1)}`;
-    const res = await fetch(`${API_URL}/api/public/availability/${encodeURIComponent(ORGANIZER_ID)}?month=${key}`);
+    const res = await fetch(`${API_URL}/api/public/availability/${encodeURIComponent(ORGANIZER_ID)}?month=${key}&t=${Date.now()}`);
     if (!res.ok) throw new Error('Failed to load month');
     const data = await res.json();
     if (data.dates) state.monthData = { ...state.monthData, ...data.dates };
@@ -315,18 +341,22 @@
     area.innerHTML = '<p style="color:#5E6A7E;">Chargement des créneaux...</p>';
     try {
       const { slots } = await fetchSlots(dateStr);
-      const available = (slots || []).filter(s => s.available);
-      if (available.length === 0) { area.innerHTML = '<p style="color:#5E6A7E;">Aucun créneau disponible pour cette date.</p>'; return; }
-      area.innerHTML = `<div class="eizo-slots-title">${available.length} créneau${available.length>1?'x':''} disponible${available.length>1?'s':''}</div><div class="eizo-slots" id="eizo-slots-list"></div>`;
+      const allSlots = slots || [];
+      if (allSlots.length === 0) { area.innerHTML = '<p style="color:#5E6A7E;">Aucun créneau pour cette date.</p>'; return; }
+      const available = allSlots.filter(s => s.available);
+      const title = available.length === 0 ? 'Aucun créneau disponible' : `${available.length} créneau${available.length>1?'x':''} disponible${available.length>1?'s':''}`;
+      area.innerHTML = `<div class="eizo-slots-title">${title}</div><div class="eizo-slots" id="eizo-slots-list"></div>`;
       const list = document.getElementById('eizo-slots-list');
-      available.forEach(slot => {
+      allSlots.forEach(slot => {
         const start = formatTime(slot.start || slot.time);
         const end = formatTime(slot.end);
         const label = end ? `${start} - ${end}` : start;
         const btn = document.createElement('div');
-        btn.className = 'eizo-slot';
+        btn.className = 'eizo-slot' + (slot.available ? '' : ' eizo-disabled');
         btn.textContent = label;
-        btn.addEventListener('click', () => selectTime(dateStr, slot.time, slot.end));
+        if (slot.available) {
+          btn.addEventListener('click', () => selectTime(dateStr, slot.time, slot.end));
+        }
         list.appendChild(btn);
       });
     } catch { area.innerHTML = '<p style="color:#EF4444;">Impossible de charger les créneaux.</p>'; }
@@ -390,8 +420,19 @@
     } finally { btn.disabled = false; btn.textContent = original; }
   });
 
-  trackView();
-  renderCalendar(state.currentMonth);
-  if (shouldPrompt()) setTimeout(showPrompt, 1500);
+  function maybeShowPrompt() {
+    trackView();
+    renderCalendar(state.currentMonth);
+    if (shouldPrompt() && !document.getElementById('eizo-prompt').classList.contains('active') && !document.getElementById('eizo-backdrop').classList.contains('active')) {
+      setTimeout(showPrompt, 800);
+    }
+  }
+
+  maybeShowPrompt();
+
+  // Compter aussi quand la page est restaurée via le bouton retour du navigateur
+  window.addEventListener('pageshow', (e) => {
+    if (e.persisted) maybeShowPrompt();
+  });
 })();
 </script>

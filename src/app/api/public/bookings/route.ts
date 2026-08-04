@@ -29,6 +29,8 @@ export async function POST(request: NextRequest) {
       return withCors(NextResponse.json({ error: 'Missing required fields' }, { status: 400 }), request);
     }
 
+    const normalizedTime = String(time).trim().slice(0, 5);
+
     const supabase = getSupabaseClient();
 
     const { data: organizer, error: organizerError } = await supabase
@@ -52,7 +54,7 @@ export async function POST(request: NextRequest) {
       .select('id')
       .eq('organizer_id', organizer.id)
       .eq('date', date)
-      .eq('start_time', `${time}:00`)
+      .eq('start_time', `${normalizedTime}:00`)
       .neq('status', 'cancelled')
       .single();
 
@@ -65,7 +67,7 @@ export async function POST(request: NextRequest) {
       return withCors(NextResponse.json({ error: 'Failed to check availability' }, { status: 500 }), request);
     }
 
-    const endMinutes = timeToMinutes(time) + organizer.slot_duration_minutes;
+    const endMinutes = timeToMinutes(normalizedTime) + organizer.slot_duration_minutes;
     const endTime = minutesToTime(endMinutes);
 
     // Générer le token de confirmation
@@ -80,7 +82,7 @@ export async function POST(request: NextRequest) {
       .insert({
         organizer_id: organizer.id,
         date,
-        start_time: `${time}:00`,
+        start_time: `${normalizedTime}:00`,
         end_time: `${endTime}:00`,
         slot_duration_minutes: organizer.slot_duration_minutes,
         customer_name: customerName,
@@ -107,11 +109,15 @@ export async function POST(request: NextRequest) {
       const emailData = {
         customerName,
         customerEmail,
+        customerPhone,
         date,
-        time,
+        time: `${normalizedTime}:00`,
+        endTime: `${endTime}:00`,
         organizerName: organizer.name,
         organizerEmail: organizer.notification_email || organizer.email,
         productTitle,
+        productHandle,
+        shopDomain,
         notes,
         confirmationUrl: acceptUrl,
         declineUrl,

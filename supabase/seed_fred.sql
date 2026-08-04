@@ -1,6 +1,6 @@
 -- ---------------------------------------------------------------------------
 -- Seed: Créneaux Fred ROL pour le calendrier ColorEdge
--- Horaires : mardi et vendredi, 09:30-10:30 / 11:00-12:30 / 14:00-15:30 / 16:00-17:00
+-- Horaires : mardi et vendredi, 09:30-10:30 / 12:00-13:00 / 14:00-15:00 / 16:30-17:30
 -- Congés : du 27/07 au 17/08/2026
 -- Indisponibilités : 01/04/11/18 Sept, 06/09/13 Oct, 03/06 Nov 2026
 -- ---------------------------------------------------------------------------
@@ -61,19 +61,19 @@ ins_av AS (
 INSERT INTO availability_slots (availability_id, start_time, end_time)
 SELECT av.id, '09:30:00'::time, '10:30:00'::time FROM ins_av av WHERE av.day_of_week = 2
 UNION ALL
-SELECT av.id, '11:00:00'::time, '12:30:00'::time FROM ins_av av WHERE av.day_of_week = 2
+SELECT av.id, '12:00:00'::time, '13:00:00'::time FROM ins_av av WHERE av.day_of_week = 2
 UNION ALL
-SELECT av.id, '14:00:00'::time, '15:30:00'::time FROM ins_av av WHERE av.day_of_week = 2
+SELECT av.id, '14:00:00'::time, '15:00:00'::time FROM ins_av av WHERE av.day_of_week = 2
 UNION ALL
-SELECT av.id, '16:00:00'::time, '17:00:00'::time FROM ins_av av WHERE av.day_of_week = 2
+SELECT av.id, '16:30:00'::time, '17:30:00'::time FROM ins_av av WHERE av.day_of_week = 2
 UNION ALL
 SELECT av.id, '09:30:00'::time, '10:30:00'::time FROM ins_av av WHERE av.day_of_week = 5
 UNION ALL
-SELECT av.id, '11:00:00'::time, '12:30:00'::time FROM ins_av av WHERE av.day_of_week = 5
+SELECT av.id, '12:00:00'::time, '13:00:00'::time FROM ins_av av WHERE av.day_of_week = 5
 UNION ALL
-SELECT av.id, '14:00:00'::time, '15:30:00'::time FROM ins_av av WHERE av.day_of_week = 5
+SELECT av.id, '14:00:00'::time, '15:00:00'::time FROM ins_av av WHERE av.day_of_week = 5
 UNION ALL
-SELECT av.id, '16:00:00'::time, '17:00:00'::time FROM ins_av av WHERE av.day_of_week = 5;
+SELECT av.id, '16:30:00'::time, '17:30:00'::time FROM ins_av av WHERE av.day_of_week = 5;
 
 -- 3. Exceptions de congés et indisponibilités
 DELETE FROM availability_exceptions

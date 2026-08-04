@@ -3,11 +3,15 @@ import nodemailer from 'nodemailer';
 export interface BookingEmailData {
   customerName: string;
   customerEmail: string;
+  customerPhone?: string;
   date: string;
   time: string;
+  endTime?: string;
   organizerName: string;
   organizerEmail: string;
   productTitle?: string;
+  productHandle?: string;
+  shopDomain?: string;
   notes?: string;
   confirmationUrl?: string;
   declineUrl?: string;
@@ -133,67 +137,103 @@ async function sendWithSendgrid(payload: SendEmailPayload): Promise<void> {
   }
 }
 
-function buildCustomerRequestBody(data: BookingEmailData): string {
-  const productInfo = data.productTitle ? `<p><strong>Produit :</strong> ${data.productTitle}</p>` : '';
-  
+function emailWrapper(content: string, accentColor = '#0066CC'): string {
   return `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 40px; color: #111827;">
-      <h1 style="font-size: 24px; font-weight: 600; margin-bottom: 24px;">Demande de rendez-vous enregistrée</h1>
-      <p style="font-size: 16px; color: #6b7280; margin-bottom: 32px;">Bonjour ${data.customerName},</p>
-      <div style="background: #f9fafb; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-        <p style="margin: 0 0 8px;"><strong>Expert :</strong> ${data.organizerName}</p>
-        <p style="margin: 0 0 8px;"><strong>Date :</strong> ${formatDate(data.date)}</p>
-        <p style="margin: 0 0 8px;"><strong>Heure :</strong> ${data.time}</p>
-        ${productInfo}
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f6f8fb; padding: 40px 16px;">
+      <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.06);">
+        <div style="background: ${accentColor}; padding: 28px 32px; text-align: center;">
+          <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.3px;">ColorEdge</h1>
+          <p style="color: rgba(255,255,255,0.85); margin: 6px 0 0; font-size: 13px;">Rendez-vous avec Fred ROL</p>
+        </div>
+        <div style="padding: 32px;">
+          ${content}
+        </div>
+        <div style="background: #f9fafb; padding: 20px 32px; text-align: center; border-top: 1px solid #e3e8ef;">
+          <p style="margin: 0; color: #6b7280; font-size: 12px;">EIZO / Feeder · 12 rue Paul Dautier, 78140 Vélizy-Villacoublay</p>
+        </div>
       </div>
-      <p style="font-size: 14px; color: #6b7280;">Votre demande est en attente de validation. Vous recevrez un email de confirmation dès qu'elle sera acceptée.</p>
     </div>
   `;
+}
+
+function detailRow(label: string, value: string): string {
+  if (!value) return '';
+  return `<tr><td style="padding: 8px 0; color: #6b7280; font-size: 14px; vertical-align: top; white-space: nowrap;">${label}</td><td style="padding: 8px 0 8px 16px; color: #111827; font-size: 14px; font-weight: 500;">${value}</td></tr>`;
+}
+
+function buildCustomerRequestBody(data: BookingEmailData): string {
+  const productInfo = data.productTitle ? detailRow('Produit consulté', data.productTitle) : '';
+  const shop = data.shopDomain ? detailRow('Boutique', data.shopDomain) : '';
+  const phone = data.customerPhone ? detailRow('Téléphone', data.customerPhone) : '';
+  const note = data.notes ? `<tr><td colspan="2" style="padding-top: 12px; color: #6b7280; font-size: 14px;"><em>"${data.notes}"</em></td></tr>` : '';
+
+  const body = `
+    <p style="font-size: 16px; color: #111827; margin: 0 0 24px;">Bonjour ${data.customerName},</p>
+    <p style="font-size: 15px; color: #4b5563; line-height: 1.6; margin: 0 0 24px;">Votre demande de rendez-vous a bien été enregistrée. Elle est en attente de validation par notre équipe.</p>
+    <table style="width: 100%; border-collapse: collapse; background: #f9fafb; border-radius: 12px; padding: 20px; display: table;">
+      ${detailRow('Expert', data.organizerName)}
+      ${detailRow('Date', formatDate(data.date))}
+      ${detailRow('Heure', formatTime(data.time, data.endTime))}
+      ${productInfo}
+      ${shop}
+      ${phone}
+      ${note}
+    </table>
+    <p style="font-size: 13px; color: #6b7280; margin: 24px 0 0;">Vous recevrez un nouvel email dès que le rendez-vous sera confirmé.</p>
+  `;
+  return emailWrapper(body);
 }
 
 function buildCustomerEmailBody(data: BookingEmailData): string {
-  const productInfo = data.productTitle ? `<p><strong>Produit :</strong> ${data.productTitle}</p>` : '';
-  
-  return `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 40px; color: #111827;">
-      <h1 style="font-size: 24px; font-weight: 600; margin-bottom: 24px;">Votre rendez-vous est confirmé</h1>
-      <p style="font-size: 16px; color: #6b7280; margin-bottom: 32px;">Bonjour ${data.customerName},</p>
-      <div style="background: #f9fafb; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-        <p style="margin: 0 0 8px;"><strong>Expert :</strong> ${data.organizerName}</p>
-        <p style="margin: 0 0 8px;"><strong>Date :</strong> ${formatDate(data.date)}</p>
-        <p style="margin: 0 0 8px;"><strong>Heure :</strong> ${data.time}</p>
-        ${productInfo}
-      </div>
-      <p style="font-size: 14px; color: #6b7280;">Votre rendez-vous a été validé. À bientôt !</p>
-    </div>
+  const productInfo = data.productTitle ? detailRow('Produit consulté', data.productTitle) : '';
+  const phone = data.customerPhone ? detailRow('Téléphone', data.customerPhone) : '';
+  const note = data.notes ? `<tr><td colspan="2" style="padding-top: 12px; color: #6b7280; font-size: 14px;"><em>"${data.notes}"</em></td></tr>` : '';
+
+  const body = `
+    <p style="font-size: 16px; color: #111827; margin: 0 0 24px;">Bonjour ${data.customerName},</p>
+    <p style="font-size: 15px; color: #4b5563; line-height: 1.6; margin: 0 0 24px;">Votre rendez-vous est confirmé. Voici les détails :</p>
+    <table style="width: 100%; border-collapse: collapse; background: #f9fafb; border-radius: 12px; padding: 20px; display: table;">
+      ${detailRow('Expert', data.organizerName)}
+      ${detailRow('Date', formatDate(data.date))}
+      ${detailRow('Heure', formatTime(data.time, data.endTime))}
+      ${productInfo}
+      ${phone}
+      ${note}
+    </table>
+    <p style="font-size: 13px; color: #6b7280; margin: 24px 0 0;">Au plaisir de vous accueillir. N’hésitez pas à nous contacter si vous avez des questions.</p>
   `;
+  return emailWrapper(body, '#10B981');
 }
 
 function buildOrganizerEmailBody(data: BookingEmailData): string {
-  const productInfo = data.productTitle ? `<p><strong>Produit :</strong> ${data.productTitle}</p>` : '';
-  const notes = data.notes ? `<p><strong>Notes client :</strong> ${data.notes}</p>` : '';
+  const productInfo = data.productTitle ? detailRow('Produit consulté', data.productTitle) : '';
+  const shop = data.shopDomain ? detailRow('Boutique', data.shopDomain) : '';
+  const phone = data.customerPhone ? detailRow('Téléphone', data.customerPhone) : '';
+  const note = data.notes ? `<tr><td colspan="2" style="padding-top: 12px; color: #6b7280; font-size: 14px;"><em>"${data.notes}"</em></td></tr>` : '';
   const actions = (data.confirmationUrl && data.declineUrl)
-    ? `<p style="margin-top: 24px;">
-         <a href="${data.confirmationUrl}" style="display: inline-block; background: #0066CC; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">Accepter</a>
-         <a href="${data.declineUrl}" style="display: inline-block; background: #EF4444; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-left: 8px;">Refuser</a>
-       </p>`
+    ? `<div style="margin-top: 28px; text-align: center;">
+         <a href="${data.confirmationUrl}" style="display: inline-block; background: #10B981; color: #fff; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; margin: 0 6px 8px;">Accepter le rendez-vous</a>
+         <a href="${data.declineUrl}" style="display: inline-block; background: #ffffff; color: #EF4444; border: 2px solid #EF4444; padding: 12px 26px; border-radius: 10px; text-decoration: none; font-weight: 600; margin: 0 6px 8px;">Refuser</a>
+       </div>`
     : '';
 
-  return `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 40px; color: #111827;">
-      <h1 style="font-size: 24px; font-weight: 600; margin-bottom: 24px;">Nouveau rendez-vous à valider</h1>
-      <p style="font-size: 16px; color: #6b7280; margin-bottom: 24px;">Cliquez sur <strong>Accepter</strong> pour confirmer le rendez-vous. Le client sera notifié.</p>
-      <div style="background: #f9fafb; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-        <p style="margin: 0 0 8px;"><strong>Client :</strong> ${data.customerName}</p>
-        <p style="margin: 0 0 8px;"><strong>Email :</strong> ${data.customerEmail}</p>
-        <p style="margin: 0 0 8px;"><strong>Date :</strong> ${formatDate(data.date)}</p>
-        <p style="margin: 0 0 8px;"><strong>Heure :</strong> ${data.time}</p>
-        ${productInfo}
-        ${notes}
-      </div>
-      ${actions}
-    </div>
+  const body = `
+    <p style="font-size: 16px; color: #111827; margin: 0 0 20px;">Bonjour Fred,</p>
+    <p style="font-size: 15px; color: #4b5563; line-height: 1.6; margin: 0 0 24px;">Une nouvelle demande de rendez-vous est à valider.</p>
+    <table style="width: 100%; border-collapse: collapse; background: #f9fafb; border-radius: 12px; padding: 20px; display: table; margin-bottom: 8px;">
+      ${detailRow('Client', data.customerName)}
+      ${detailRow('Email', `<a href="mailto:${data.customerEmail}" style="color: #0066CC;">${data.customerEmail}</a>`)}
+      ${phone}
+      ${detailRow('Date', formatDate(data.date))}
+      ${detailRow('Heure', formatTime(data.time, data.endTime))}
+      ${productInfo}
+      ${shop}
+      ${note}
+    </table>
+    <p style="font-size: 13px; color: #6b7280; margin: 0 0 8px;">Cliquez sur <strong>Accepter</strong> pour confirmer. Le client recevra alors un email de confirmation.</p>
+    ${actions}
   `;
+  return emailWrapper(body);
 }
 
 function formatDate(date: string): string {
@@ -203,4 +243,10 @@ function formatDate(date: string): string {
     month: 'long',
     day: 'numeric',
   });
+}
+
+function formatTime(start: string, end?: string): string {
+  const s = start.slice(0, 5);
+  if (!end) return s;
+  return `${s} - ${end.slice(0, 5)}`;
 }

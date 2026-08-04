@@ -117,7 +117,7 @@ export async function GET(
       const bookingsByDate: Record<string, string[]> = {};
       for (const b of allBookings) {
         if (!bookingsByDate[b.date]) bookingsByDate[b.date] = [];
-        bookingsByDate[b.date].push(b.start_time.slice(0, 5));
+        bookingsByDate[b.date].push(b.start_time.slice(0, 8));
       }
 
       const dates: Record<string, any[]> = {};
@@ -152,7 +152,7 @@ export async function GET(
       console.error('[public availability] supabase unavailable, returning all slots:', err);
     }
 
-    const bookedStartTimes = bookings.map((b: any) => b.start_time.slice(0, 5));
+    const bookedStartTimes = bookings.map((b: any) => b.start_time.slice(0, 8));
     const slots = generateSlotsForDate(date!, enrichedOrganizer, bookedStartTimes, unavailableDates);
 
     return withCors(NextResponse.json({ slots }), request);

@@ -56,6 +56,11 @@
     });
   }
 
+  function formatTime(timeStr) {
+    if (!timeStr) return '';
+    return String(timeStr).slice(0, 5);
+  }
+
   function isColorEdgeProduct() {
     const tags = (CONFIG.productTags || '').toLowerCase().split(',').map(t => t.trim());
     const isTag = tags.includes(COLOR_TAG);
@@ -196,7 +201,7 @@
       .eizo-bw-day:hover:not(.eizo-bw-disabled):not(.eizo-bw-empty) { border-color: var(--eizo-primary); background: var(--eizo-primary-10); }
       .eizo-bw-day.eizo-bw-today { border-color: var(--eizo-primary); color: var(--eizo-primary); font-weight: 700; }
       .eizo-bw-day.eizo-bw-selected { background: var(--eizo-primary); color: #fff; border-color: var(--eizo-primary); }
-      .eizo-bw-day.eizo-bw-disabled { color: #CBD5E1; cursor: not-allowed; }
+      .eizo-bw-day.eizo-bw-disabled { background: #F3F4F6; color: #9CA3AF; cursor: not-allowed; pointer-events: none; }
       .eizo-bw-day.eizo-bw-empty { cursor: default; }
       .eizo-bw-slots-title { font-size: 15px; font-weight: 700; color: var(--eizo-text); margin-bottom: 14px; }
       .eizo-bw-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; }
@@ -380,7 +385,7 @@
     const specialty = document.getElementById('eizo-bw-specialty');
     const profile = document.getElementById('eizo-bw-profile');
     const logos = document.getElementById('eizo-bw-logos');
-    const mediaBaseUrl = CONFIG.mediaBaseUrl || '';
+    const mediaBaseUrl = (CONFIG.mediaBaseUrl || '').replace(/\/+$/, '');
 
     if (!avatar) return;
 
@@ -593,8 +598,10 @@
         <h3 class="eizo-bw-slots-title">${available.length} créneau${available.length > 1 ? 'x' : ''} disponible${available.length > 1 ? 's' : ''}</h3>
         <div class="eizo-bw-slots">
           ${available.map(slot => {
-            const label = slot.end ? `${slot.start} - ${slot.end}` : slot.time;
-            return `<button type="button" class="eizo-bw-slot" data-time="${slot.time}" data-start="${slot.start || slot.time}" data-end="${slot.end || slot.time}">${label}</button>`;
+            const start = formatTime(slot.start || slot.time);
+            const end = formatTime(slot.end);
+            const label = end ? `${start} - ${end}` : start;
+            return `<button type="button" class="eizo-bw-slot" data-time="${slot.time}" data-start="${start}" data-end="${end}">${label}</button>`;
           }).join('')}
         </div>
       `;
@@ -619,7 +626,7 @@
   }
 
   function showForm(date, time, endTime) {
-    const display = endTime ? `${time} - ${endTime}` : time;
+    const display = endTime ? `${formatTime(time)} - ${formatTime(endTime)}` : formatTime(time);
     const datetime = `${formatDate(date)} de ${display}`;
     document.getElementById('eizo-bw-selected-datetime').textContent = datetime;
     document.getElementById('eizo-bw-error').classList.add('eizo-bw-hidden');

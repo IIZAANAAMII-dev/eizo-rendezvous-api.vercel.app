@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getShopifyConnectionId } from '@/lib/shopify-session';
+import { getShopifyConnectionId, toErrorResponse } from '@/lib/shopify-session';
 import { getSupabaseClient } from '@/lib/supabase';
 import type { AvailabilityException } from '@/types/admin';
 
@@ -25,7 +25,7 @@ export async function GET(
       return NextResponse.json({ error: 'Missing shop parameter' }, { status: 400 });
     }
 
-    const shopifyConnectionId = await getShopifyConnectionId(shop);
+    const shopifyConnectionId = await getShopifyConnectionId(request, shop);
 
     const supabase = getSupabaseClient();
 
@@ -41,8 +41,7 @@ export async function GET(
 
     return NextResponse.json(data || []);
   } catch (error) {
-    console.error('[admin availability-exceptions GET]', error);
-    return NextResponse.json({ error: 'Failed to fetch availability exceptions' }, { status: 500 });
+    return toErrorResponse(error, 'Failed to fetch availability exceptions');
   }
 }
 
@@ -58,6 +57,8 @@ export async function POST(
     if (!shop) {
       return NextResponse.json({ error: 'Missing shop parameter' }, { status: 400 });
     }
+
+    await getShopifyConnectionId(request, shop);
 
     const body = await request.json();
     const parsed = availabilityExceptionSchema.safeParse(body);
@@ -85,8 +86,7 @@ export async function POST(
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error('[admin availability-exceptions POST]', error);
-    return NextResponse.json({ error: 'Failed to create availability exception' }, { status: 500 });
+    return toErrorResponse(error, 'Failed to create availability exception');
   }
 }
 
@@ -108,7 +108,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Missing exceptionId parameter' }, { status: 400 });
     }
 
-    const shopifyConnectionId = await getShopifyConnectionId(shop);
+    const shopifyConnectionId = await getShopifyConnectionId(request, shop);
 
     const supabase = getSupabaseClient();
 
@@ -123,7 +123,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('[admin availability-exceptions DELETE]', error);
-    return NextResponse.json({ error: 'Failed to delete availability exception' }, { status: 500 });
+    return toErrorResponse(error, 'Failed to delete availability exception');
   }
 }

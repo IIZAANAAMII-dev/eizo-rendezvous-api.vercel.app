@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { getSupabaseClient } from '@/lib/supabase';
-import { getOrganizerConfig } from '@/config/organizers';
 import { timeToMinutes, minutesToTime } from '@/lib/availability';
 import { sendConfirmationEmail, sendOrganizerNotification } from '@/lib/email';
 import { handleCors, withCors } from '@/lib/cors';
@@ -29,12 +29,22 @@ export async function POST(request: NextRequest) {
       return withCors(NextResponse.json({ error: 'Missing required fields' }, { status: 400 }), request);
     }
 
-    const organizer = getOrganizerConfig(organizerId);
-    if (!organizer) {
-      return withCors(NextResponse.json({ error: 'Organizer not found' }, { status: 404 }), request);
-    }
-
     const supabase = getSupabaseClient();
+
+    const { data: organizer, error: organizerError } = await supabase
+      .from('organizers')
+      .select('*')
+      .eq('slug', organizerId)
+      .eq('active', true)
+      .single();
+
+    if (organizerError || !organizer) {
+      if (organizerError?.code === 'PGRST116') {
+        return withCors(NextResponse.json({ error: 'Organizer not found' }, { status: 404 }), request);
+      }
+      console.error('[public booking] organizer fetch error:', organizerError);
+      return withCors(NextResponse.json({ error: 'Failed to fetch organizer' }, { status: 500 }), request);
+    }
 
     // Vérifier si le créneau est déjà réservé
     const { data: existingBooking, error: checkError } = await supabase
@@ -55,10 +65,16 @@ export async function POST(request: NextRequest) {
       return withCors(NextResponse.json({ error: 'Failed to check availability' }, { status: 500 }), request);
     }
 
-    const endMinutes = timeToMinutes(time) + organizer.slotDurationMinutes;
+    const endMinutes = timeToMinutes(time) + organizer.slot_duration_minutes;
     const endTime = minutesToTime(endMinutes);
 
-    // Créer la réservation
+    // Générer le token de confirmation
+    const confirmationToken = randomUUID();
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://eizo-rendezvous-api-vercel-app.vercel.app';
+    const acceptUrl = `${appUrl}/api/public/bookings/validate?token=${confirmationToken}&action=accept`;
+    const declineUrl = `${appUrl}/api/public/bookings/validate?token=${confirmationToken}&action=decline`;
+
+    // Créer la réservation en attente de validation
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .insert({
@@ -66,7 +82,7 @@ export async function POST(request: NextRequest) {
         date,
         start_time: `${time}:00`,
         end_time: `${endTime}:00`,
-        slot_duration_minutes: organizer.slotDurationMinutes,
+        slot_duration_minutes: organizer.slot_duration_minutes,
         customer_name: customerName,
         customer_email: customerEmail,
         customer_phone: customerPhone || null,
@@ -75,7 +91,8 @@ export async function POST(request: NextRequest) {
         product_handle: productHandle || null,
         product_id: productId || null,
         shop_domain: shopDomain || null,
-        status: 'confirmed',
+        status: 'pending',
+        confirmation_token: confirmationToken,
       })
       .select()
       .single();
@@ -93,9 +110,11 @@ export async function POST(request: NextRequest) {
         date,
         time,
         organizerName: organizer.name,
-        organizerEmail: organizer.notificationEmail || organizer.email,
+        organizerEmail: organizer.notification_email || organizer.email,
         productTitle,
         notes,
+        confirmationUrl: acceptUrl,
+        declineUrl,
       };
 
       await Promise.all([
@@ -112,4 +131,10 @@ export async function POST(request: NextRequest) {
     console.error('[public booking]', error);
     return withCors(NextResponse.json({ error: 'Failed to create booking' }, { status: 500 }), request);
   }
+}
+
+export async function OPTIONS(request: NextRequest) {
+  const preflight = handleCors(request);
+  if (preflight) return preflight;
+  return new NextResponse(null, { status: 204 });
 }

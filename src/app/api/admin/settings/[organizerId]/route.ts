@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getShopifyConnectionId } from '@/lib/shopify-session';
+import { getShopifyConnectionId, toErrorResponse } from '@/lib/shopify-session';
 import { getBookingSettings, upsertBookingSettings } from '@/lib/supabase';
 import type { BookingSettings } from '@/types/admin';
 
@@ -27,12 +27,13 @@ export async function GET(
       return NextResponse.json({ error: 'Missing shop parameter' }, { status: 400 });
     }
     
+    await getShopifyConnectionId(request, shop);
+    
     const settings = await getBookingSettings(organizerId);
     
     return NextResponse.json(settings);
   } catch (error) {
-    console.error('[admin settings GET]', error);
-    return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 });
+    return toErrorResponse(error, 'Failed to fetch settings');
   }
 }
 
@@ -48,6 +49,8 @@ export async function PUT(
     if (!shop) {
       return NextResponse.json({ error: 'Missing shop parameter' }, { status: 400 });
     }
+    
+    await getShopifyConnectionId(request, shop);
     
     const body = await request.json();
     const parsed = settingsSchema.safeParse(body);
@@ -71,7 +74,6 @@ export async function PUT(
     
     return NextResponse.json(upserted);
   } catch (error) {
-    console.error('[admin settings PUT]', error);
-    return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 });
+    return toErrorResponse(error, 'Failed to update settings');
   }
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getShopifyConnectionId } from '@/lib/shopify-session';
+import { getShopifyConnectionId, toErrorResponse } from '@/lib/shopify-session';
 import { getSupabaseClient } from '@/lib/supabase';
 import { updateOrganizer, deleteOrganizer } from '@/lib/supabase';
 
@@ -23,7 +23,7 @@ export async function GET(
       return NextResponse.json({ error: 'Missing shop parameter' }, { status: 400 });
     }
     
-    const shopifyConnectionId = await getShopifyConnectionId(shop);
+    const shopifyConnectionId = await getShopifyConnectionId(request, shop);
     const supabase = getSupabaseClient();
     
     const { data, error } = await supabase
@@ -43,8 +43,7 @@ export async function GET(
     
     return NextResponse.json(data);
   } catch (error) {
-    console.error('[admin organizers GET]', error);
-    return NextResponse.json({ error: 'Failed to fetch organizer' }, { status: 500 });
+    return toErrorResponse(error, 'Failed to fetch organizer');
   }
 }
 
@@ -61,7 +60,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Missing shop parameter' }, { status: 400 });
     }
     
-    const shopifyConnectionId = await getShopifyConnectionId(shop);
+    const shopifyConnectionId = await getShopifyConnectionId(request, shop);
     
     const body = await request.json();
     const parsed = organizerUpdateSchema.safeParse(body);
@@ -74,8 +73,7 @@ export async function PUT(
     
     return NextResponse.json(organizer);
   } catch (error) {
-    console.error('[admin organizers PUT]', error);
-    return NextResponse.json({ error: 'Failed to update organizer' }, { status: 500 });
+    return toErrorResponse(error, 'Failed to update organizer');
   }
 }
 
@@ -92,12 +90,11 @@ export async function DELETE(
       return NextResponse.json({ error: 'Missing shop parameter' }, { status: 400 });
     }
     
-    const shopifyConnectionId = await getShopifyConnectionId(shop);
+    const shopifyConnectionId = await getShopifyConnectionId(request, shop);
     await deleteOrganizer(id, shopifyConnectionId);
     
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('[admin organizers DELETE]', error);
-    return NextResponse.json({ error: 'Failed to delete organizer' }, { status: 500 });
+    return toErrorResponse(error, 'Failed to delete organizer');
   }
 }

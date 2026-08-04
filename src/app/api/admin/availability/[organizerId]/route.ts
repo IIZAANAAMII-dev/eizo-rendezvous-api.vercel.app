@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getShopifyConnectionId } from '@/lib/shopify-session';
+import { getShopifyConnectionId, toErrorResponse } from '@/lib/shopify-session';
 import { getSupabaseClient, upsertAvailability } from '@/lib/supabase';
 import type { Availability, AvailabilitySlot } from '@/types/admin';
 
@@ -29,7 +29,7 @@ export async function GET(
       return NextResponse.json({ error: 'Missing shop parameter' }, { status: 400 });
     }
 
-    const shopifyConnectionId = await getShopifyConnectionId(shop);
+    const shopifyConnectionId = await getShopifyConnectionId(request, shop);
 
     const supabase = getSupabaseClient();
 
@@ -48,8 +48,7 @@ export async function GET(
 
     return NextResponse.json(data || []);
   } catch (error) {
-    console.error('[admin availability GET]', error);
-    return NextResponse.json({ error: 'Failed to fetch availability' }, { status: 500 });
+    return toErrorResponse(error, 'Failed to fetch availability');
   }
 }
 
@@ -65,6 +64,8 @@ export async function PUT(
     if (!shop) {
       return NextResponse.json({ error: 'Missing shop parameter' }, { status: 400 });
     }
+
+    await getShopifyConnectionId(request, shop);
 
     const body = await request.json();
     const parsed = availabilitySchema.safeParse(body);
@@ -130,7 +131,6 @@ export async function PUT(
 
     return NextResponse.json(finalData);
   } catch (error) {
-    console.error('[admin availability PUT]', error);
-    return NextResponse.json({ error: 'Failed to update availability' }, { status: 500 });
+    return toErrorResponse(error, 'Failed to update availability');
   }
 }

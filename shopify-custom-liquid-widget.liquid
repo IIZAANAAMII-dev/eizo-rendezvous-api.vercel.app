@@ -1,0 +1,255 @@
+{% comment %}
+  EIZO Booking Widget - Custom Liquid
+  Copier-coller ce bloc dans un block "Custom Liquid" sur la page ColorEdge.
+  Il charge les créneaux de Fred ROL (slug coloredge) depuis l'API Vercel.
+{% endcomment %}
+
+<style>
+  #eizo-booking-widget { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 720px; margin: 24px auto; border: 1px solid #E3E8EF; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); background: #fff; }
+  #eizo-booking-widget .eizo-header { background: #0066CC; color: #fff; padding: 24px; }
+  #eizo-booking-widget .eizo-header h3 { margin: 0 0 4px; font-size: 20px; }
+  #eizo-booking-widget .eizo-header p { margin: 0; opacity: 0.9; font-size: 14px; }
+  #eizo-booking-widget .eizo-body { padding: 24px; }
+  #eizo-booking-widget .eizo-calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin: 18px 0; }
+  #eizo-booking-widget .eizo-day-label { text-align: center; font-size: 12px; font-weight: 700; color: #5E6A7E; padding: 8px 0; }
+  #eizo-booking-widget .eizo-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 500; background: #F6F8FB; border: 1px solid transparent; }
+  #eizo-booking-widget .eizo-day:hover:not(.disabled):not(.empty) { border-color: #0066CC; background: rgba(0,102,204,0.08); }
+  #eizo-booking-widget .eizo-day.disabled { color: #CBD5D1; cursor: not-allowed; background: transparent; }
+  #eizo-booking-widget .eizo-day.empty { background: transparent; cursor: default; }
+  #eizo-booking-widget .eizo-day.selected { background: #0066CC; color: #fff; }
+  #eizo-booking-widget .eizo-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  #eizo-booking-widget .eizo-nav button { padding: 6px 12px; border: 1px solid #E3E8EF; background: #fff; border-radius: 8px; cursor: pointer; }
+  #eizo-booking-widget .eizo-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; margin-top: 16px; }
+  #eizo-booking-widget .eizo-slot { padding: 12px; border: 1.5px solid #E3E8EF; background: #fff; border-radius: 10px; text-align: center; cursor: pointer; font-weight: 600; }
+  #eizo-booking-widget .eizo-slot:hover { border-color: #0066CC; color: #0066CC; background: rgba(0,102,204,0.08); }
+  #eizo-booking-widget .eizo-form { margin-top: 20px; }
+  #eizo-booking-widget .eizo-form label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  #eizo-booking-widget .eizo-form input, #eizo-booking-widget .eizo-form textarea { width: 100%; padding: 12px; border: 1px solid #E3E8EF; border-radius: 10px; margin-bottom: 12px; font-size: 15px; box-sizing: border-box; }
+  #eizo-booking-widget .eizo-form button { width: 100%; padding: 14px; border: none; background: #0066CC; color: #fff; font-size: 16px; font-weight: 700; border-radius: 10px; cursor: pointer; }
+  #eizo-booking-widget .eizo-error { color: #EF4444; font-size: 14px; margin-bottom: 12px; }
+  #eizo-booking-widget .eizo-success { color: #10B981; font-weight: 700; text-align: center; padding: 40px; }
+</style>
+
+<div id="eizo-booking-widget">
+  <div class="eizo-header">
+    <h3 id="eizo-expert-name">Chargement...</h3>
+    <p id="eizo-expert-desc">Prenez rendez-vous avec Fred ROL</p>
+  </div>
+  <div class="eizo-body">
+    <div class="eizo-nav">
+      <button id="eizo-prev" type="button">‹</button>
+      <span id="eizo-month"></span>
+      <button id="eizo-next" type="button">›</button>
+    </div>
+    <div class="eizo-calendar" id="eizo-calendar"></div>
+    <div id="eizo-slots"></div>
+    <form id="eizo-form" class="eizo-form" style="display:none;">
+      <h4>Confirmer le rendez-vous</h4>
+      <p id="eizo-datetime"></p>
+      <div id="eizo-error" class="eizo-error"></div>
+      <label for="eizo-firstName">Prénom *</label>
+      <input id="eizo-firstName" name="firstName" required placeholder="Jean">
+      <label for="eizo-lastName">Nom *</label>
+      <input id="eizo-lastName" name="lastName" required placeholder="Dupont">
+      <label for="eizo-email">Email *</label>
+      <input id="eizo-email" name="email" type="email" required placeholder="jean@example.com">
+      <label for="eizo-phone">Téléphone</label>
+      <input id="eizo-phone" name="phone" placeholder="+33 6 12 34 56 78">
+      <label for="eizo-notes">Notes / Questions</label>
+      <textarea id="eizo-notes" name="notes" rows="3" placeholder="Décrivez votre besoin..."></textarea>
+      <button type="submit">Confirmer le rendez-vous</button>
+    </form>
+    <div id="eizo-success" class="eizo-success" style="display:none;">
+      <div style="font-size:48px; margin-bottom:16px;">✓</div>
+      <div>Rendez-vous confirmé ! Vous allez recevoir un email.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+  const API_URL = 'https://eizo-rendezvous-api-vercel-app.vercel.app';
+  const ORGANIZER_ID = 'coloredge';
+
+  const state = {
+    currentMonth: new Date(),
+    selectedDate: null,
+    selectedTime: null,
+    organizer: null
+  };
+
+  function pad(n) { return n.toString().padStart(2, '0'); }
+  function formatApiDate(d) { return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+  function formatDisplayDate(dateStr) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const date = new Date(y, m-1, d);
+    return date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  }
+
+  async function fetchOrganizer() {
+    const res = await fetch(`${API_URL}/api/public/organizers/${encodeURIComponent(ORGANIZER_ID)}`);
+    if (!res.ok) throw new Error('Organizer not found');
+    return res.json();
+  }
+
+  async function fetchSlots(date) {
+    const res = await fetch(`${API_URL}/api/public/availability/${encodeURIComponent(ORGANIZER_ID)}?date=${date}`);
+    if (!res.ok) throw new Error('Failed to load slots');
+    return res.json();
+  }
+
+  async function createBooking(payload) {
+    const res = await fetch(`${API_URL}/api/public/bookings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ organizerId: ORGANIZER_ID, ...payload })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Booking failed');
+    return data;
+  }
+
+  async function init() {
+    try {
+      state.organizer = await fetchOrganizer();
+      document.getElementById('eizo-expert-name').textContent = state.organizer.name || 'Fred ROL';
+      document.getElementById('eizo-expert-desc').textContent = state.organizer.description || 'Expert ColorEdge';
+    } catch (err) {
+      document.getElementById('eizo-expert-name').textContent = 'Fred ROL';
+      document.getElementById('eizo-expert-desc').textContent = 'Expert ColorEdge - rendez-vous personnalisés';
+    }
+    renderCalendar(state.currentMonth);
+  }
+
+  function renderCalendar(date) {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const first = new Date(year, month, 1);
+    const last = new Date(year, month + 1, 0);
+    const daysInMonth = last.getDate();
+    const startOffset = first.getDay();
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    document.getElementById('eizo-month').textContent = new Date(year, month).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    const cal = document.getElementById('eizo-calendar');
+    cal.innerHTML = '';
+
+    ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'].forEach(day => {
+      const el = document.createElement('div');
+      el.className = 'eizo-day-label';
+      el.textContent = day;
+      cal.appendChild(el);
+    });
+
+    for (let i = 0; i < startOffset; i++) {
+      const el = document.createElement('div');
+      el.className = 'eizo-day empty';
+      cal.appendChild(el);
+    }
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateObj = new Date(year, month, d);
+      const dateStr = formatApiDate(dateObj);
+      const el = document.createElement('div');
+      el.className = 'eizo-day';
+      el.textContent = d;
+      if (dateObj < today) {
+        el.classList.add('disabled');
+      } else {
+        el.addEventListener('click', () => selectDate(dateStr, el));
+      }
+      if (state.selectedDate === dateStr) el.classList.add('selected');
+      cal.appendChild(el);
+    }
+  }
+
+  async function selectDate(dateStr, el) {
+    document.querySelectorAll('#eizo-calendar .eizo-day').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    state.selectedDate = dateStr;
+    state.selectedTime = null;
+    document.getElementById('eizo-form').style.display = 'none';
+    document.getElementById('eizo-success').style.display = 'none';
+    document.getElementById('eizo-error').textContent = '';
+
+    const slotsArea = document.getElementById('eizo-slots');
+    slotsArea.innerHTML = '<p>Chargement des créneaux...</p>';
+    try {
+      const { slots } = await fetchSlots(dateStr);
+      const available = (slots || []).filter(s => s.available);
+      if (available.length === 0) {
+        slotsArea.innerHTML = '<p>Aucun créneau disponible pour cette date.</p>';
+        return;
+      }
+      const title = document.createElement('h4');
+      title.textContent = `${available.length} créneau${available.length > 1 ? 'x' : ''} disponible${available.length > 1 ? 's' : ''}`;
+      slotsArea.innerHTML = '';
+      slotsArea.appendChild(title);
+      const list = document.createElement('div');
+      list.className = 'eizo-slots';
+      available.forEach(slot => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'eizo-slot';
+        btn.textContent = slot.time;
+        btn.addEventListener('click', () => selectTime(dateStr, slot.time));
+        list.appendChild(btn);
+      });
+      slotsArea.appendChild(list);
+    } catch (err) {
+      slotsArea.innerHTML = '<p>Impossible de charger les créneaux.</p>';
+    }
+  }
+
+  function selectTime(date, time) {
+    state.selectedDate = date;
+    state.selectedTime = time;
+    document.getElementById('eizo-form').style.display = 'block';
+    document.getElementById('eizo-success').style.display = 'none';
+    document.getElementById('eizo-datetime').textContent = `${formatDisplayDate(date)} à ${time}`;
+    document.getElementById('eizo-error').textContent = '';
+    window.scrollTo({ top: document.getElementById('eizo-form').offsetTop - 20, behavior: 'smooth' });
+  }
+
+  document.getElementById('eizo-prev').addEventListener('click', () => {
+    state.currentMonth.setMonth(state.currentMonth.getMonth() - 1);
+    renderCalendar(state.currentMonth);
+  });
+  document.getElementById('eizo-next').addEventListener('click', () => {
+    state.currentMonth.setMonth(state.currentMonth.getMonth() + 1);
+    renderCalendar(state.currentMonth);
+  });
+
+  document.getElementById('eizo-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = this.querySelector('button[type="submit"]');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Confirmation...';
+    document.getElementById('eizo-error').textContent = '';
+
+    try {
+      await createBooking({
+        date: state.selectedDate,
+        time: state.selectedTime,
+        customerName: `${document.getElementById('eizo-firstName').value.trim()} ${document.getElementById('eizo-lastName').value.trim()}`,
+        customerEmail: document.getElementById('eizo-email').value.trim(),
+        customerPhone: document.getElementById('eizo-phone').value.trim() || undefined,
+        notes: document.getElementById('eizo-notes').value.trim() || undefined
+      });
+      document.getElementById('eizo-form').style.display = 'none';
+      document.getElementById('eizo-slots').innerHTML = '';
+      document.getElementById('eizo-success').style.display = 'block';
+    } catch (err) {
+      document.getElementById('eizo-error').textContent = err.message || 'Erreur lors de la réservation.';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  });
+
+  init();
+})();
+</script>

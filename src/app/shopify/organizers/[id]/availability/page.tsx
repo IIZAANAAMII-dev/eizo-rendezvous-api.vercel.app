@@ -179,13 +179,18 @@ export default function AvailabilitySettings() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      for (const day of availability) {
-        await fetch(`/api/admin/availability/${organizerId}?shop=${shop}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(day),
-        });
-      }
+      // Days are independent rows: save them concurrently instead of
+      // one-by-one, which turned a single click into up to 7 sequential
+      // network round-trips.
+      await Promise.all(
+        availability.map((day) =>
+          fetch(`/api/admin/availability/${organizerId}?shop=${shop}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(day),
+          })
+        )
+      );
       alert('Disponibilité sauvegardée');
     } catch (error) {
       alert('Erreur lors de la sauvegarde');

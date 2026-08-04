@@ -1,3 +1,10 @@
+export interface WorkingDaySlot {
+  start: string; // HH:mm
+  end: string;   // HH:mm
+}
+
+export type WorkingDays = Record<number, WorkingDaySlot[]>; // 0 = Sunday
+
 export interface Organizer {
   id: string;
   shopify_connection_id?: string;
@@ -10,6 +17,12 @@ export interface Organizer {
   phone?: string;
   active: boolean;
   avatar_url?: string;
+  slot_duration_minutes: number;
+  buffer_minutes: number;
+  working_days: WorkingDays;
+  notification_email?: string;
+  brand_color?: string;
+  locale?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -23,26 +36,12 @@ export interface OrganizerInput {
   timezone?: string;
   phone?: string;
   active: boolean;
-}
-
-export interface OrganizerProfile {
-  id?: string;
-  organizer_id: string;
-  photo_url?: string;
-  description?: string;
-  specialty?: string;
-  phone?: string;
-  timezone?: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface OrganizerProfileInput {
-  photo_url?: string;
-  description?: string;
-  specialty?: string;
-  phone?: string;
-  timezone?: string;
+  slot_duration_minutes?: number;
+  buffer_minutes?: number;
+  working_days?: WorkingDays;
+  notification_email?: string;
+  brand_color?: string;
+  locale?: string;
 }
 
 export interface Availability {

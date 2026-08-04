@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getShopifyConnectionId } from '@/lib/shopify-session';
+import { getShopifyConnectionId, toErrorResponse } from '@/lib/shopify-session';
 import { getOrganizersByShop, createOrganizer } from '@/lib/supabase';
 import type { OrganizerInput } from '@/types/admin';
 
@@ -23,13 +23,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Missing shop parameter' }, { status: 400 });
     }
     
-    const shopifyConnectionId = await getShopifyConnectionId(shop);
+    const shopifyConnectionId = await getShopifyConnectionId(request, shop);
     const organizers = await getOrganizersByShop(shopifyConnectionId);
     
     return NextResponse.json(organizers);
   } catch (error) {
-    console.error('[admin organizers GET]', error);
-    return NextResponse.json({ error: 'Failed to fetch organizers' }, { status: 500 });
+    return toErrorResponse(error, 'Failed to fetch organizers');
   }
 }
 
@@ -49,12 +48,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid data', details: parsed.error }, { status: 400 });
     }
     
-    const shopifyConnectionId = await getShopifyConnectionId(shop);
+    const shopifyConnectionId = await getShopifyConnectionId(request, shop);
     const organizer = await createOrganizer(parsed.data, shopifyConnectionId);
     
     return NextResponse.json(organizer, { status: 201 });
   } catch (error) {
-    console.error('[admin organizers POST]', error);
-    return NextResponse.json({ error: 'Failed to create organizer' }, { status: 500 });
+    return toErrorResponse(error, 'Failed to create organizer');
   }
 }

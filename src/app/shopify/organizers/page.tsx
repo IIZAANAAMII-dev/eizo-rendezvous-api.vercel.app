@@ -66,8 +66,10 @@ export default function OrganizersList() {
         throw new Error(error.message || 'Failed to create organizer');
       }
 
-      const updated = await fetch(`/api/admin/organizers?shop=${shop}`).then(res => res.json());
-      setOrganizers(updated);
+      // Append the created organizer directly instead of refetching the
+      // whole list, saving a redundant round-trip on every creation.
+      const created = await response.json();
+      setOrganizers((prev) => [...prev, created]);
       setIsModalOpen(false);
       setNewOrganizer({ name: '', email: '', specialty: '', description: '', timezone: 'Europe/Paris' });
     } catch (error) {

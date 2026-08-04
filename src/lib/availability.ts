@@ -1,4 +1,4 @@
-import { OrganizerConfig } from '@/config/organizers';
+import type { Organizer } from '@/types/admin';
 
 export interface Slot {
   time: string;
@@ -20,20 +20,25 @@ export function minutesToTime(minutes: number): string {
 
 export function generateSlotsForDate(
   date: string,
-  organizer: OrganizerConfig,
-  bookedStartTimes: string[]
+  organizer: Organizer,
+  bookedStartTimes: string[],
+  unavailableDates?: string[]
 ): Slot[] {
+  if (unavailableDates?.includes(date)) {
+    return [];
+  }
+
   const dateObj = new Date(date);
   const dayOfWeek = dateObj.getDay();
-  const workingSlots = organizer.workingDays[dayOfWeek] || [];
+  const workingSlots = organizer.working_days?.[dayOfWeek] || [];
 
   if (workingSlots.length === 0) {
     return [];
   }
 
   const slots: Slot[] = [];
-  const duration = organizer.slotDurationMinutes;
-  const buffer = organizer.bufferMinutes;
+  const duration = organizer.slot_duration_minutes;
+  const buffer = organizer.buffer_minutes;
   const step = duration + buffer;
 
   for (const range of workingSlots) {
@@ -56,10 +61,10 @@ export function generateSlotsForDate(
   return slots;
 }
 
-export function getWorkingRangesForDate(date: string, organizer: OrganizerConfig): string {
+export function getWorkingRangesForDate(date: string, organizer: Organizer): string {
   const dateObj = new Date(date);
   const dayOfWeek = dateObj.getDay();
-  const workingSlots = organizer.workingDays[dayOfWeek] || [];
+  const workingSlots = organizer.working_days?.[dayOfWeek] || [];
 
   if (workingSlots.length === 0) return 'Non disponible';
 

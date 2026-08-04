@@ -1,19 +1,27 @@
 # EIZO Rendez-vous API
 
-Backend Next.js 15 (App Router) que j'ai développé pour la prise de rendez-vous de démonstration EIZO ColorEdge.
+Backend Next.js 15 (App Router) pour la prise de rendez-vous de démonstration EIZO ColorEdge : Back Office Shopify embedded app + widget de réservation Theme App Extension, données stockées dans Supabase.
 
 ## Architecture
 
-- `POST /api/reservation/create` : création d'une demande de rendez-vous
-- `GET /api/reservation/action?token=...&action=confirm|cancel` : confirmation / annulation depuis l'email
+- **Back Office Shopify** (`/shopify/*`) : dashboard, gestion des experts (`organizers`), disponibilités, réservations. Accessible en tant qu'app embedded Shopify.
+- **API admin** (`/api/admin/*`) : CRUD utilisé par le Back Office, scopé par `shopify_connection_id` (résolu depuis le paramètre `shop`).
+- **API publique** (`/api/public/*`) : consommée par le widget Theme App Extension côté storefront.
+  - `GET /api/public/organizers` / `GET /api/public/organizers/[id]`
+  - `GET /api/public/availability/[organizerId]?date=YYYY-MM-DD`
+  - `POST /api/public/bookings`
+- **Page de réservation autonome** (`/booking`, `/booking/[id]`) : liste des experts + calendrier, hors contexte Shopify.
+- **Extension Shopify** (`extensions/booking-widget`) : Theme App Extension qui injecte le widget de réservation sur le storefront (popup ou bouton fixe selon les réglages du bloc).
+- **Legacy** : `/api/booking/[organizerSlug]/*` et `/api/reservation/action` restent en place car câblés à l'App Proxy Shopify déclaré dans `shopify.app.toml` (`[app_proxy]`) et aux liens de confirmation/annulation envoyés par `lib/mail.ts`. Non utilisés par le widget actuel (qui appelle `/api/public/*` directement).
 
-Les rendez-vous sont stockés dans le Metaobject Shopify existant `rendez_vous_fred`.
+Les rendez-vous sont stockés dans Supabase (tables `organizers`, `availability`, `availability_slots`, `blocked_dates`, `booking_settings`, `bookings`, `appointments`, `shopify_connections`).
 
 ## Prérequis
 
 - Node.js 18+
 - Un compte Vercel
-- Accès Admin API de la boutique Shopify
+- Un projet Supabase
+- Une app Shopify Partner configurée (Theme App Extension + Admin API)
 
 ## Installation locale
 
@@ -23,27 +31,13 @@ npm install
 
 ## Variables d'environnement
 
-Copier `.env.example` en `.env.local` et renseigner les valeurs.
-
-- `SHOPIFY_STORE_DOMAIN` : domaine `.myshopify.com` (ex: `eizo.myshopify.com`), pas le domaine public.
-- `SHOPIFY_ADMIN_ACCESS_TOKEN` : token Admin API de l'application Shopify installée.
-- `SHOPIFY_API_VERSION` : version de l'API Shopify (par défaut `2024-10`). `2026-07` n'est pas disponible.
-- `SHOPIFY_METAOBJECT_TYPE` : handle/type du metaobject (`rendez_vous_fred`).
-- `SMTP_*` : serveur SMTP pour l'envoi des emails.
-- `EMAIL_FROM` / `EMAIL_TO` : expéditeur et destinataire des notifications Fred.
-- `API_BASE_URL` : URL publique de l'API (pour les liens des emails).
+Copier `.env.example` en `.env.local` et renseigner les valeurs (Supabase, Shopify OAuth, SMTP, `API_BASE_URL`).
 
 ## Lancer en local
 
 ```bash
 npm run dev
 ```
-
-## Connexion Shopify
-
-L'application "EIZO Rendez-vous" doit être installée sur la boutique et disposer des scopes `read_metaobjects` et `write_metaobjects`.
-
-Le code récupère dynamiquement les clés de champs du Metaobject depuis la définition Shopify. Ajustez `SHOPIFY_METAOBJECT_TYPE` si le handle est différent (ex: `rendez-vous-fred`).
 
 ## Déploiement Vercel
 
@@ -54,9 +48,9 @@ Le code récupère dynamiquement les clés de champs du Metaobject depuis la dé
 
 ## Sécurité
 
-- Validation Zod des entrées.
-- Génération de token UUID v4.
-- Gestion CORS sur la route `create`.
+- Validation Zod sur la plupart des routes d'entrée.
+- Génération de token UUID v4 pour les liens de confirmation/annulation.
+- CORS géré via `lib/cors.ts` (whitelist) pour les routes publiques.
 - Les secrets ne sont jamais commités.
 
 ## Auteur

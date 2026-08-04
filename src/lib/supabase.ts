@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js';
-import type { Appointment } from '@/types/appointment';
 import type { Organizer, OrganizerInput, Availability, BookingSettings } from '@/types/admin';
 
 export function getSupabaseClient() {
@@ -9,100 +8,6 @@ export function getSupabaseClient() {
     throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variable');
   }
   return createClient(supabaseUrl, supabaseKey);
-}
-
-export async function createAppointment(data: Appointment, organizerId?: string): Promise<Appointment> {
-  const supabase = getSupabaseClient();
-  
-  const { data: inserted, error } = await supabase
-    .from('appointments')
-    .insert({
-      organizer_id: organizerId,
-      customer_name: data.customer_name,
-      customer_first_name: data.customer_first_name,
-      customer_company: data.customer_company,
-      customer_email: data.customer_email,
-      customer_phone: data.customer_phone,
-      appointment_date: data.appointment_date,
-      start_time: data.start_time,
-      end_time: data.end_time,
-      product: data.product,
-      message: data.message,
-      status: data.status,
-      confirmation_token: data.confirmation_token,
-    })
-    .select()
-    .single();
-
-  if (error) {
-    console.error('[supabase] Failed to create appointment:', error);
-    throw new Error('Failed to create appointment in Supabase');
-  }
-
-  return inserted;
-}
-
-export async function getAppointmentsByDate(date: string, organizerId?: string): Promise<Appointment[]> {
-  const supabase = getSupabaseClient();
-  
-  const query = supabase
-    .from('appointments')
-    .select('*')
-    .eq('appointment_date', date)
-    .neq('status', 'Annulé')
-    .neq('status', 'Refusé');
-  
-  if (organizerId) {
-    query.eq('organizer_id', organizerId);
-  }
-  
-  const { data, error } = await query;
-
-  if (error) {
-    console.error('[supabase] Failed to fetch appointments:', error);
-    throw new Error('Failed to fetch appointments from Supabase');
-  }
-
-  return data || [];
-}
-
-export async function getAppointmentByToken(token: string, organizerId?: string): Promise<Appointment | null> {
-  const supabase = getSupabaseClient();
-  
-  const query = supabase
-    .from('appointments')
-    .select('*')
-    .eq('confirmation_token', token);
-  
-  if (organizerId) {
-    query.eq('organizer_id', organizerId);
-  }
-  
-  const { data, error } = await query.single();
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return null; // Not found
-    }
-    console.error('[supabase] Failed to fetch appointment by token:', error);
-    throw new Error('Failed to fetch appointment from Supabase');
-  }
-
-  return data;
-}
-
-export async function updateAppointmentStatus(id: string, status: string): Promise<void> {
-  const supabase = getSupabaseClient();
-  
-  const { error } = await supabase
-    .from('appointments')
-    .update({ status })
-    .eq('id', id);
-
-  if (error) {
-    console.error('[supabase] Failed to update appointment status:', error);
-    throw new Error('Failed to update appointment status in Supabase');
-  }
 }
 
 // Organizer functions

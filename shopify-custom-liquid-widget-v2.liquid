@@ -60,9 +60,11 @@
   #eizo-booking-widget .eizo-success .icon { width: 72px; height: 72px; border-radius: 50%; background: rgba(16,185,129,0.1); color: #10B981; display: flex; align-items: center; justify-content: center; font-size: 36px; margin: 0 auto 24px; }
   #eizo-booking-widget .eizo-prompt { display: none; position: fixed; inset: 0; z-index: 10000; align-items: center; justify-content: center; background: rgba(11,18,32,0.45); backdrop-filter: blur(4px); padding: 16px; }
   #eizo-booking-widget .eizo-prompt.active { display: flex; }
-  #eizo-booking-widget .eizo-prompt-card { width: min(420px, 100%); background: #fff; border-radius: 20px; box-shadow: 0 25px 60px rgba(0,0,0,0.18); padding: 32px; text-align: center; }
-  #eizo-booking-widget .eizo-prompt-title { font-size: 22px; font-weight: 700; margin: 0 0 10px; }
-  #eizo-booking-widget .eizo-prompt-text { color: #5E6A7E; font-size: 15px; line-height: 1.5; margin: 0 0 24px; }
+  #eizo-booking-widget .eizo-prompt-card { width: min(460px, 100%); background: #fff; border-radius: 24px; box-shadow: 0 25px 60px rgba(0,0,0,0.18); padding: 36px 32px; text-align: center; }
+  #eizo-booking-widget .eizo-prompt-kicker { color: #0066CC; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 12px; }
+  #eizo-booking-widget .eizo-prompt-title { font-size: 22px; font-weight: 700; color: #0B1220; margin: 0 0 16px; line-height: 1.25; }
+  #eizo-booking-widget .eizo-prompt-text { color: #5E6A7E; font-size: 15px; line-height: 1.6; margin: 0 0 24px; }
+  #eizo-booking-widget .eizo-prompt-small { color: #8B95A8; font-size: 12px; line-height: 1.5; margin: 20px 0 0; }
   #eizo-booking-widget .eizo-prompt-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
   #eizo-booking-widget .eizo-prompt-btn { padding: 12px 24px; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
   #eizo-booking-widget .eizo-prompt-btn-primary { background: #0066CC; color: #fff; }
@@ -92,12 +94,14 @@
 
   <div class="eizo-prompt" id="eizo-prompt">
     <div class="eizo-prompt-card">
-      <h3 class="eizo-prompt-title">Vous consultez nos ColorEdge ?</h3>
-      <p class="eizo-prompt-text">Voulez-vous planifier une démonstration personnalisée avec Fred ROL ?</p>
+      <p class="eizo-prompt-kicker">Conseil personnalisé ColorEdge</p>
+      <h3 class="eizo-prompt-title">Besoin d’aide pour choisir votre moniteur ?</h3>
+      <p class="eizo-prompt-text">Vous comparez plusieurs modèles. Choisir un écran adapté à votre usage n’est pas simple. Fred ROL, notre expert ColorEdge, vous accompagne gratuitement pour comparer les colorimétries, calibrer votre flux ou préparer un achat en toute sérénité.</p>
       <div class="eizo-prompt-actions">
         <button class="eizo-prompt-btn eizo-prompt-btn-primary" id="eizo-prompt-yes" type="button">Oui, choisir un créneau</button>
-        <button class="eizo-prompt-btn eizo-prompt-btn-secondary" id="eizo-prompt-no" type="button">Non, merci</button>
+        <button class="eizo-prompt-btn eizo-prompt-btn-secondary" id="eizo-prompt-no" type="button">Non merci, je continue</button>
       </div>
+      <p class="eizo-prompt-small">Démonstration de 1 h à Paris (Prophot) ou en visio, sans engagement.</p>
     </div>
   </div>
 
@@ -299,8 +303,36 @@
       productId: productId ? String(productId).split('/').pop() : undefined,
       handle: productHandle,
       title: productTitle,
-      url: window.location.href
+      url: window.location.href,
+      isProduct: true
     };
+  }
+
+  function getCurrentColorEdgeContext() {
+    const template = {{ template | json }};
+    const collectionHandle = {{ collection.handle | default: '' | json }};
+    const collectionTitle = {{ collection.title | default: '' | json }};
+    const product = getCurrentProduct();
+    if (product) return product;
+    if (template === 'collection' && collectionHandle) {
+      return {
+        productId: undefined,
+        handle: collectionHandle,
+        title: collectionTitle || collectionHandle,
+        url: window.location.href,
+        isProduct: false
+      };
+    }
+    if (isColorEdgePage()) {
+      return {
+        productId: undefined,
+        handle: (window.location.pathname || 'coloredge').replace(/^\//, '').replace(/\//g, '-'),
+        title: document.title || 'ColorEdge',
+        url: window.location.href,
+        isProduct: false
+      };
+    }
+    return null;
   }
 
   function readRawHistory() {
@@ -335,7 +367,7 @@
     const v = readColorEdgeVisits();
     const byHandle = {};
     for (const p of v) {
-      if (!p.handle) continue;
+      if (!p.handle || p.isProduct === false) continue;
       const existing = byHandle[p.handle];
       if (!existing || p.viewedAt > existing.viewedAt) {
         byHandle[p.handle] = p;
@@ -345,7 +377,7 @@
   }
 
   function isTechnicalRevisit() {
-    const current = getCurrentProduct();
+    const current = getCurrentColorEdgeContext();
     if (!current) return false;
     const last = getLastColorEdgeVisit();
     if (!last) return false;
@@ -356,7 +388,7 @@
 
   function trackColorEdgeVisit() {
     if (!isColorEdgePage()) return;
-    const current = getCurrentProduct();
+    const current = getCurrentColorEdgeContext();
     if (!current) return;
     if (isTechnicalRevisit()) return;
     const visits = readColorEdgeVisits();
@@ -451,11 +483,19 @@
     }).join('');
   }
 
+  function getLastViewedProduct() {
+    const v = readColorEdgeVisits();
+    for (let i = v.length - 1; i >= 0; i--) {
+      if (v[i].isProduct !== false) return v[i];
+    }
+    return null;
+  }
+
   function getSelectedRequestedProduct() {
     const select = document.getElementById('eizo-requested-product');
     if (!select) return null;
     const handle = select.value;
-    return getUniqueViewedProducts().find(p => p.handle === handle) || getCurrentProduct() || getLastColorEdgeVisit();
+    return getUniqueViewedProducts().find(p => p.handle === handle) || getCurrentProduct() || getLastViewedProduct();
   }
 
   async function createBooking(payload) {
@@ -638,7 +678,8 @@
 
     console.log('[EIZO Booking]', {
       visits,
-      currentProduct: current?.handle || null,
+      currentContext: current?.handle || null,
+      isProduct: current?.isProduct || false,
       isColorEdge: isColorEdgePage(),
       promptState,
       promptOpen: state.promptOpen,

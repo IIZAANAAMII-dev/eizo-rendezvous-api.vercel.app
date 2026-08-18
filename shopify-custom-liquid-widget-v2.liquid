@@ -615,15 +615,34 @@
     } finally { btn.disabled = false; btn.textContent = original; }
   });
 
-  function maybeShowPrompt() {
-    trackColorEdgeVisit();
+  function shouldTrackForNavigation() {
+    try {
+      const nav = performance.getEntriesByType('navigation')[0];
+      if (!nav) return true;
+      // back_forward ne signifie pas forcément bfcache, mais on le traite comme une nouvelle visite
+      // si le produit a changé. Le debounce gère les doublons techniques.
+      return nav.type !== 'reload' || true;
+    } catch { return true; }
+  }
+
+  function maybeShowPrompt(forceTrack = false) {
+    if (forceTrack && shouldTrackForNavigation()) {
+      trackColorEdgeVisit();
+    } else {
+      trackColorEdgeVisit();
+    }
+
     const visits = getColorEdgeVisitCount();
     const promptState = readPromptState();
+    const current = getCurrentProduct();
 
     console.log('[EIZO Booking]', {
       visits,
-      currentProduct: getCurrentProduct()?.handle || null,
-      promptState
+      currentProduct: current?.handle || null,
+      isColorEdge: isColorEdgePage(),
+      promptState,
+      promptOpen: state.promptOpen,
+      modalOpen: state.modalOpen
     });
 
     if (promptState === 'accepted' || promptState === 'dismissed') {
@@ -634,6 +653,7 @@
     if (visits >= TRIGGER_THRESHOLD && !state.promptOpen && !state.modalOpen) {
       setTimeout(() => {
         if (state.promptOpen || state.modalOpen) return;
+        if (readPromptState() === 'accepted' || readPromptState() === 'dismissed') return;
         showPrompt();
       }, PROMPT_DELAY_MS);
     }
@@ -646,13 +666,21 @@
   };
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', maybeShowPrompt, { once: true });
+    document.addEventListener('DOMContentLoaded', () => maybeShowPrompt(), { once: true });
   } else {
     maybeShowPrompt();
   }
 
+  // bfcache
   window.addEventListener('pageshow', (e) => {
-    if (e.persisted) maybeShowPrompt();
+    console.log('[EIZO Booking] pageshow', { persisted: e.persisted });
+    if (e.persisted) maybeShowPrompt(true);
+  });
+
+  // Retour / suivant navigateur quand bfcache n'est pas utilisé
+  window.addEventListener('popstate', () => {
+    console.log('[EIZO Booking] popstate');
+    maybeShowPrompt(true);
   });
 })();
 </script>

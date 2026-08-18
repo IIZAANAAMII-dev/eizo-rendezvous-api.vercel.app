@@ -279,6 +279,12 @@
     return new Date(y,m-1,d).toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' });
   }
   function formatTime(t) { return (t || '').toString().slice(0,5); }
+  function isSlotInPast(dateStr, time) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const [h = 0, min = 0] = (time || '').toString().split(':').map(Number);
+    const slot = new Date(y, m - 1, d, h, min);
+    return slot < new Date();
+  }
   function escapeHtml(str) {
     if (!str) return '';
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
@@ -563,9 +569,10 @@
         const dateObj = new Date(year, month, d);
         const dateStr = formatApiDate(dateObj);
         const isPast = dateObj < today;
+        const isToday = dateObj.getTime() === today.getTime();
         const isWorking = WORKING_DAYS.includes(dateObj.getDay());
         const slots = monthSlots[dateStr] || [];
-        const hasAvailable = slots.some(s => s.available);
+        const hasAvailable = slots.some(s => s.available && (!isToday || !isSlotInPast(dateStr, s.time || s.start)));
         const el = document.createElement('div');
         el.className = 'eizo-day';
         el.textContent = d;
@@ -591,7 +598,7 @@
       const { slots } = await fetchSlots(dateStr);
       const allSlots = slots || [];
       if (allSlots.length === 0) { area.innerHTML = '<p style="color:#5E6A7E;">Aucun créneau pour cette date.</p>'; return; }
-      const available = allSlots.filter(s => s.available);
+      const available = allSlots.filter(s => s.available && !isSlotInPast(dateStr, s.time || s.start));
       const title = available.length === 0 ? 'Aucun créneau disponible' : `${available.length} créneau${available.length>1?'x':''} disponible${available.length>1?'s':''}`;
       area.innerHTML = `<div class="eizo-slots-title">${title}</div><div class="eizo-slots" id="eizo-slots-list"></div>`;
       const list = document.getElementById('eizo-slots-list');
@@ -599,10 +606,12 @@
         const start = formatTime(slot.start || slot.time);
         const end = formatTime(slot.end);
         const label = end ? `${start} - ${end}` : start;
+        const isPast = isSlotInPast(dateStr, slot.time || slot.start);
+        const disabled = !slot.available || isPast;
         const btn = document.createElement('div');
-        btn.className = 'eizo-slot' + (slot.available ? '' : ' eizo-disabled');
+        btn.className = 'eizo-slot' + (disabled ? ' eizo-disabled' : '');
         btn.textContent = label;
-        if (slot.available) {
+        if (slot.available && !isPast) {
           btn.addEventListener('click', () => selectTime(dateStr, slot.time, slot.end));
         }
         list.appendChild(btn);

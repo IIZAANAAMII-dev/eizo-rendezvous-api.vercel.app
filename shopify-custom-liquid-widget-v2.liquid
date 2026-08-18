@@ -397,8 +397,6 @@
   }
 
   function trackColorEdgeVisit() {
-    const template = {{ template | json }};
-    if (template !== 'collection') return;
     if (!isColorEdgePage()) return;
     const current = getCurrentColorEdgeContext();
     if (!current) return;
@@ -702,7 +700,7 @@
 
     if (!isCollectionPage()) return;
 
-    if (visits >= TRIGGER_THRESHOLD && !state.promptOpen && !state.modalOpen) {
+    if (visits >= TRIGGER_THRESHOLD && !state.promptOpen && !state.modalOpen && !readPromptState()) {
       setTimeout(() => {
         if (state.promptOpen || state.modalOpen) return;
         if (readPromptState() === 'accepted' || readPromptState() === 'dismissed') return;

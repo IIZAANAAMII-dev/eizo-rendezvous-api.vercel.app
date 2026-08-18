@@ -368,6 +368,10 @@
 
   function getColorEdgeVisitCount() { return readColorEdgeVisits().length; }
 
+  function getProductVisitCount() {
+    return readColorEdgeVisits().filter(v => v.isProduct === true).length;
+  }
+
   function getLastColorEdgeVisit() {
     const v = readColorEdgeVisits();
     return v[v.length - 1] || null;
@@ -681,11 +685,13 @@
     trackColorEdgeVisit();
 
     const visits = getColorEdgeVisitCount();
+    const productVisits = getProductVisitCount();
     const promptState = readPromptState();
     const current = getCurrentColorEdgeContext();
 
     console.log('[EIZO Booking]', {
       visits,
+      productVisits,
       currentContext: current?.handle || null,
       isCollection: isCollectionPage(),
       promptState,
@@ -700,7 +706,7 @@
 
     if (!isCollectionPage()) return;
 
-    if (visits >= TRIGGER_THRESHOLD && !state.promptOpen && !state.modalOpen && !readPromptState()) {
+    if (productVisits >= TRIGGER_THRESHOLD && !state.promptOpen && !state.modalOpen && !readPromptState()) {
       setTimeout(() => {
         if (state.promptOpen || state.modalOpen) return;
         if (readPromptState() === 'accepted' || readPromptState() === 'dismissed') return;

@@ -1,6 +1,6 @@
 {% comment %}
-  EIZO Booking Widget v2 - Custom Liquid Modal
-  Copier-coller dans un block "Custom Liquid" sur la page ColorEdge.
+  EIZO Booking Widget v2.1 - Custom Liquid Modal
+  Copier-coller dans un block "Custom Liquid" sur les pages produits ColorEdge.
 {% endcomment %}
 
 <style>
@@ -50,43 +50,47 @@
   #eizo-booking-widget .eizo-form h4 { margin: 0 0 6px; }
   #eizo-booking-widget .eizo-form p { color: #5E6A7E; margin: 0 0 18px; }
   #eizo-booking-widget .eizo-form label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 4px; }
-  #eizo-booking-widget .eizo-form input, #eizo-booking-widget .eizo-form textarea { width: 100%; padding: 12px; border: 1px solid #E3E8EF; border-radius: 10px; margin-bottom: 14px; font-size: 15px; box-sizing: border-box; }
+  #eizo-booking-widget .eizo-form input,
+  #eizo-booking-widget .eizo-form select,
+  #eizo-booking-widget .eizo-form textarea { width: 100%; padding: 12px; border: 1px solid #E3E8EF; border-radius: 10px; margin-bottom: 14px; font-size: 15px; box-sizing: border-box; background: #fff; }
   #eizo-booking-widget .eizo-form button { width: 100%; padding: 14px; border: none; background: #0066CC; color: #fff; font-size: 16px; font-weight: 700; border-radius: 10px; cursor: pointer; }
+  #eizo-booking-widget .eizo-form button:hover { filter: brightness(0.93); }
   #eizo-booking-widget .eizo-error { color: #EF4444; font-size: 14px; margin-bottom: 12px; }
   #eizo-booking-widget .eizo-success { text-align: center; padding: 40px 20px; color: #0B1220; }
   #eizo-booking-widget .eizo-success .icon { width: 72px; height: 72px; border-radius: 50%; background: rgba(16,185,129,0.1); color: #10B981; display: flex; align-items: center; justify-content: center; font-size: 36px; margin: 0 auto 24px; }
   #eizo-booking-widget .eizo-prompt { display: none; position: fixed; inset: 0; z-index: 10000; align-items: center; justify-content: center; background: rgba(11,18,32,0.45); backdrop-filter: blur(4px); padding: 16px; }
   #eizo-booking-widget .eizo-prompt.active { display: flex; }
   #eizo-booking-widget .eizo-prompt-card { width: min(420px, 100%); background: #fff; border-radius: 20px; box-shadow: 0 25px 60px rgba(0,0,0,0.18); padding: 32px; text-align: center; }
-  #eizo-booking-widget .eizo-prompt-kicker { color: #0066CC; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 8px; }
-  #eizo-booking-widget .eizo-prompt-title { font-size: 20px; font-weight: 700; margin: 0 0 12px; }
-  #eizo-booking-widget .eizo-prompt-text { color: #5E6A7E; font-size: 15px; line-height: 1.55; margin: 0 0 24px; }
-  #eizo-booking-widget .eizo-prompt-small { color: #9CA3AF; font-size: 12px; line-height: 1.5; margin: 16px 0 0; }
+  #eizo-booking-widget .eizo-prompt-title { font-size: 22px; font-weight: 700; margin: 0 0 10px; }
+  #eizo-booking-widget .eizo-prompt-text { color: #5E6A7E; font-size: 15px; line-height: 1.5; margin: 0 0 24px; }
   #eizo-booking-widget .eizo-prompt-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
   #eizo-booking-widget .eizo-prompt-btn { padding: 12px 24px; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
   #eizo-booking-widget .eizo-prompt-btn-primary { background: #0066CC; color: #fff; }
   #eizo-booking-widget .eizo-prompt-btn-secondary { background: #F6F8FB; color: #0B1220; }
+  #eizo-booking-widget .eizo-mini { position: fixed; left: 24px; bottom: 24px; z-index: 9000; width: 56px; height: 56px; border: none; border-radius: 50%; background: #0066CC; color: #fff; font-size: 26px; cursor: pointer; box-shadow: 0 4px 24px rgba(0,0,0,0.15); display: none; align-items: center; justify-content: center; }
+  #eizo-booking-widget .eizo-mini.active { display: flex; }
   @media (max-width: 740px) {
     #eizo-booking-widget .eizo-modal { grid-template-columns: 1fr; width: 100%; height: 100%; max-height: 100%; border-radius: 0; }
     #eizo-booking-widget .eizo-sidebar { flex-direction: row; align-items: center; gap: 16px; padding: 20px; flex-wrap: wrap; }
     #eizo-booking-widget .eizo-avatar { width: 64px; height: 64px; font-size: 20px; }
     #eizo-booking-widget .eizo-profile, #eizo-booking-widget .eizo-logos { display: none; }
+    #eizo-booking-widget .eizo-mini { left: 16px; bottom: 16px; width: 48px; height: 48px; font-size: 22px; }
   }
 </style>
 
 <div id="eizo-booking-widget">
   <button class="eizo-trigger" id="eizo-trigger" type="button" style="display:none;" aria-hidden="true">📅 Prendre rendez-vous</button>
 
+  <button class="eizo-mini" id="eizo-mini" type="button" aria-label="Prendre rendez-vous">📅</button>
+
   <div class="eizo-prompt" id="eizo-prompt">
     <div class="eizo-prompt-card">
-      <p class="eizo-prompt-kicker">Un accompagnement personnalisé</p>
-      <h3 class="eizo-prompt-title">Vous êtes intéressé par ColorEdge ?</h3>
-      <p class="eizo-prompt-text">Nos experts sont à votre disposition pour vous aider à choisir le moniteur adapté à vos besoins. C’est sans engagement.</p>
+      <h3 class="eizo-prompt-title">Vous consultez nos ColorEdge ?</h3>
+      <p class="eizo-prompt-text">Voulez-vous planifier une démonstration personnalisée avec Fred ROL ?</p>
       <div class="eizo-prompt-actions">
-        <button class="eizo-prompt-btn eizo-prompt-btn-primary" id="eizo-prompt-yes" type="button">Choisir un créneau</button>
-        <button class="eizo-prompt-btn eizo-prompt-btn-secondary" id="eizo-prompt-no" type="button">Plus tard</button>
+        <button class="eizo-prompt-btn eizo-prompt-btn-primary" id="eizo-prompt-yes" type="button">Oui, choisir un créneau</button>
+        <button class="eizo-prompt-btn eizo-prompt-btn-secondary" id="eizo-prompt-no" type="button">Non, merci</button>
       </div>
-      <p class="eizo-prompt-small">Rendez-vous de 1h à Paris (Prophot) avec Fred ROL, expert ColorEdge.</p>
     </div>
   </div>
 
@@ -164,6 +168,26 @@
           <input id="eizo-email" name="email" type="email" required placeholder="votre@email.com">
           <label for="eizo-phone">Téléphone</label>
           <input id="eizo-phone" name="phone" placeholder="Votre numéro de téléphone">
+
+          <div id="eizo-product-field" style="display:none;">
+            <label for="eizo-requested-product">Démonstration souhaitée</label>
+            <select id="eizo-requested-product" name="requestedProduct"></select>
+          </div>
+
+          <label for="eizo-usage">Votre utilisation</label>
+          <select id="eizo-usage" name="customerUsage">
+            <option value="">-- Sélectionnez --</option>
+            <option value="Photographie">Photographie</option>
+            <option value="Vidéo">Vidéo</option>
+            <option value="Retouche / post-production">Retouche / post-production</option>
+            <option value="Impression / prépresse">Impression / prépresse</option>
+            <option value="Graphisme">Graphisme</option>
+            <option value="Autre">Autre</option>
+          </select>
+
+          <label for="eizo-need">Votre besoin</label>
+          <textarea id="eizo-need" name="customerNeed" rows="3" placeholder="Que souhaitez-vous découvrir ou comparer pendant la démonstration ?"></textarea>
+
           <label for="eizo-notes">Notes / Questions</label>
           <textarea id="eizo-notes" name="notes" rows="3" placeholder="Décrivez votre besoin..."></textarea>
           <button type="submit">Confirmer le rendez-vous</button>
@@ -185,18 +209,23 @@
   const API_URL = 'https://eizo-rendezvous-api-vercel-app.vercel.app';
   const ORGANIZER_ID = 'coloredge';
   const WORKING_DAYS = [2, 5];
+  const HISTORY_LIMIT = 10;
+  const DEBOUNCE_MS = 1200;
 
   const state = {
     currentMonth: new Date(),
     selectedDate: null,
     selectedTime: null,
     selectedEnd: null,
-    monthData: {}
+    monthData: {},
+    promptShown: false,
+    initRunning: false
   };
 
   const trigger = document.getElementById('eizo-trigger');
   const backdrop = document.getElementById('eizo-backdrop');
   const prompt = document.getElementById('eizo-prompt');
+  const mini = document.getElementById('eizo-mini');
   const close = document.getElementById('eizo-close');
   const calendarEl = document.getElementById('eizo-calendar');
   const monthEl = document.getElementById('eizo-month');
@@ -211,6 +240,10 @@
     return new Date(y,m-1,d).toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' });
   }
   function formatTime(t) { return (t || '').toString().slice(0,5); }
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  }
 
   const PRODUCT_COLLECTIONS = [{% for c in product.collections %}"{{ c.handle | escape }}"{% unless forloop.last %},{% endunless %}{% endfor %}];
 
@@ -231,41 +264,85 @@
     );
   }
 
-  function readSeen() {
-    try { return JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'); } catch { return []; }
+  function readRawHistory() {
+    try { const raw = JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'); return Array.isArray(raw) ? raw : []; } catch { return []; }
   }
-  function saveSeen(list) {
-    try { localStorage.setItem(SEEN_KEY, JSON.stringify(list.slice(-10))); } catch {}
-  }
-  function readPrompt() { try { return localStorage.getItem(PROMPT_KEY); } catch { return null; } }
-  function markPrompt(v) { try { localStorage.setItem(PROMPT_KEY, v); } catch {} }
 
-  function getPageHandle() {
+  function migrateHistory(raw) {
+    if (!raw.length) return [];
+    if (raw.length && typeof raw[0] === 'object' && raw[0] !== null) return raw;
+    return raw
+      .filter(item => typeof item === 'string')
+      .map((handle, idx) => ({
+        handle,
+        title: handle,
+        viewedAt: Date.now() - (raw.length - idx) * 1000
+      }));
+  }
+
+  function readHistory() { return migrateHistory(readRawHistory()); }
+
+  function saveHistory(list) {
+    try { localStorage.setItem(SEEN_KEY, JSON.stringify(list.slice(-HISTORY_LIMIT))); } catch {}
+  }
+
+  function getCurrentProduct() {
     const template = {{ template | json }};
     const productHandle = {{ product.handle | default: '' | json }};
-    const collectionHandle = {{ collection.handle | default: '' | json }};
-    if (template === 'product' && productHandle) return `product:${productHandle}`;
-    if (template === 'collection' && collectionHandle) return `collection:${collectionHandle}`;
-    return null;
+    const productTitle = {{ product.title | default: '' | json }};
+    const productId = {{ product.id | default: '' | json }};
+    if (template !== 'product' || !isColorEdgePage()) return null;
+    return {
+      productId: productId ? String(productId).split('/').pop() : undefined,
+      handle: productHandle,
+      title: productTitle,
+      url: window.location.href
+    };
+  }
+
+  function getLastColorEdgeProduct() {
+    const h = readHistory();
+    return h[h.length - 1] || null;
+  }
+
+  function getUniqueColorEdgeCount() {
+    const h = readHistory();
+    return new Set(h.map(p => p.handle).filter(Boolean)).size;
+  }
+
+  function isRevisitTooSoon() {
+    const h = readHistory();
+    const last = h[h.length - 1];
+    if (!last) return false;
+    const current = getCurrentProduct();
+    if (!current) return false;
+    return current.handle === last.handle && (Date.now() - last.viewedAt) < DEBOUNCE_MS;
   }
 
   function trackView() {
-    if (!isColorEdgePage()) return;
-    const handle = getPageHandle();
-    const seen = readSeen();
-    // On compte chaque vue ColorEdge (même le même produit cliqué plusieurs fois),
-    // mais on évite de spammer si la page est juste rechargée rapidement
-    const last = seen[seen.length - 1];
-    const now = Date.now();
-    if (last && now - last < 1500) return;
-    seen.push(now);
-    saveSeen(seen);
+    const current = getCurrentProduct();
+    if (!current) return;
+    if (isRevisitTooSoon()) return;
+    const h = readHistory().filter(p => p.handle !== current.handle);
+    h.push({ ...current, viewedAt: Date.now() });
+    saveHistory(h);
   }
+
+  function readPrompt() { try { return localStorage.getItem(PROMPT_KEY); } catch { return null; } }
+  function markPrompt(v) { try { localStorage.setItem(PROMPT_KEY, v); } catch {} }
 
   function shouldPrompt() {
     if (readPrompt()) return false;
-    return readSeen().length >= 3;
+    return getUniqueColorEdgeCount() >= 3;
   }
+
+  function showPrompt() { if (!state.promptShown) { prompt.classList.add('active'); state.promptShown = true; } }
+  function hidePrompt() { prompt.classList.remove('active'); }
+  function showMini() { mini.classList.add('active'); }
+  function hideMini() { mini.classList.remove('active'); }
+
+  function openModal() { backdrop.classList.add('active'); document.body.style.overflow = 'hidden'; showCalendar(); }
+  function closeModal() { backdrop.classList.remove('active'); document.body.style.overflow = ''; }
 
   async function fetchSlots(date) {
     const res = await fetch(`${API_URL}/api/public/availability/${encodeURIComponent(ORGANIZER_ID)}?date=${date}&t=${Date.now()}`);
@@ -282,11 +359,61 @@
     return data.dates || {};
   }
 
+  function buildProductOptions() {
+    const h = readHistory();
+    const current = getCurrentProduct();
+    const options = [];
+    if (current) options.push({ ...current, label: current.title || current.handle, current: true });
+    for (let i = h.length - 1; i >= 0; i--) {
+      const p = h[i];
+      if (options.some(o => o.handle === p.handle)) continue;
+      options.push({ ...p, label: p.title || p.handle, current: false });
+    }
+    return options;
+  }
+
+  function renderProductField() {
+    const field = document.getElementById('eizo-product-field');
+    const select = document.getElementById('eizo-requested-product');
+    const options = buildProductOptions();
+    if (!options.length) { field.style.display = 'none'; select.innerHTML = ''; return; }
+    field.style.display = 'block';
+    select.innerHTML = options.map((p, i) => {
+      const suffix = p.current ? ' (produit actuel)' : '';
+      return `<option value="${escapeHtml(p.handle)}" ${i === 0 ? 'selected' : ''}>${escapeHtml(p.label)}${suffix}</option>`;
+    }).join('');
+  }
+
+  function getSelectedRequestedProduct() {
+    const select = document.getElementById('eizo-requested-product');
+    if (!select) return null;
+    const handle = select.value;
+    return buildProductOptions().find(p => p.handle === handle) || null;
+  }
+
   async function createBooking(payload) {
+    const history = readHistory();
+    const requested = getSelectedRequestedProduct() || getCurrentProduct() || getLastColorEdgeProduct();
     const res = await fetch(`${API_URL}/api/public/bookings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ organizerId: ORGANIZER_ID, ...payload })
+      body: JSON.stringify({
+        organizerId: ORGANIZER_ID,
+        ...payload,
+        requestedProduct: requested ? {
+          productId: requested.productId,
+          title: requested.title,
+          handle: requested.handle,
+          url: requested.url
+        } : undefined,
+        productsViewed: history.length ? history.map(p => ({
+          productId: p.productId,
+          title: p.title,
+          handle: p.handle,
+          url: p.url,
+          viewedAt: p.viewedAt
+        })) : undefined
+      })
     });
     const data = await res.json().catch(()=>({}));
     if (!res.ok) throw new Error(data.error || 'Booking failed');
@@ -370,6 +497,7 @@
     const display = state.selectedEnd ? `${formatTime(state.selectedTime)} - ${formatTime(state.selectedEnd)}` : formatTime(state.selectedTime);
     document.getElementById('eizo-datetime').textContent = `${formatDisplayDate(date)} de ${display}`;
     document.getElementById('eizo-error').textContent = '';
+    renderProductField();
     document.getElementById('eizo-firstName').focus();
   }
 
@@ -380,19 +508,15 @@
     renderCalendar(state.currentMonth);
   }
 
-  function openModal() { backdrop.classList.add('active'); document.body.style.overflow = 'hidden'; showCalendar(); }
-  function closeModal() { backdrop.classList.remove('active'); document.body.style.overflow = ''; }
-  function showPrompt() { prompt.classList.add('active'); }
-  function hidePrompt() { prompt.classList.remove('active'); }
-
   trigger.addEventListener('click', openModal);
   close.addEventListener('click', closeModal);
   backdrop.addEventListener('click', e => { if (e.target === backdrop) closeModal(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); hidePrompt(); } });
 
   document.getElementById('eizo-prompt-yes').addEventListener('click', () => { hidePrompt(); markPrompt('yes'); openModal(); });
-  document.getElementById('eizo-prompt-no').addEventListener('click', () => { hidePrompt(); markPrompt('no'); });
-  prompt.addEventListener('click', e => { if (e.target === prompt) { hidePrompt(); markPrompt('no'); } });
+  document.getElementById('eizo-prompt-no').addEventListener('click', () => { hidePrompt(); markPrompt('no'); showMini(); });
+  prompt.addEventListener('click', e => { if (e.target === prompt) { hidePrompt(); markPrompt('no'); showMini(); } });
+  mini.addEventListener('click', openModal);
 
   document.getElementById('eizo-prev').addEventListener('click', () => { state.currentMonth.setMonth(state.currentMonth.getMonth()-1); renderCalendar(state.currentMonth); });
   document.getElementById('eizo-next').addEventListener('click', () => { state.currentMonth.setMonth(state.currentMonth.getMonth()+1); renderCalendar(state.currentMonth); });
@@ -410,7 +534,9 @@
         customerName: `${document.getElementById('eizo-firstName').value.trim()} ${document.getElementById('eizo-lastName').value.trim()}`,
         customerEmail: document.getElementById('eizo-email').value.trim(),
         customerPhone: document.getElementById('eizo-phone').value.trim() || undefined,
-        notes: document.getElementById('eizo-notes').value.trim() || undefined
+        notes: document.getElementById('eizo-notes').value.trim() || undefined,
+        customerUsage: document.getElementById('eizo-usage').value.trim() || undefined,
+        customerNeed: document.getElementById('eizo-need').value.trim() || undefined
       });
       this.style.display = 'none';
       document.getElementById('eizo-slots').innerHTML = '';
@@ -421,16 +547,21 @@
   });
 
   function maybeShowPrompt() {
+    if (state.initRunning) return;
+    state.initRunning = true;
     trackView();
     renderCalendar(state.currentMonth);
-    if (shouldPrompt() && !document.getElementById('eizo-prompt').classList.contains('active') && !document.getElementById('eizo-backdrop').classList.contains('active')) {
+    const answer = readPrompt();
+    if (answer === 'yes' || answer === 'no') {
+      showMini();
+    } else if (shouldPrompt() && !state.promptShown && !backdrop.classList.contains('active')) {
       setTimeout(showPrompt, 800);
     }
+    state.initRunning = false;
   }
 
   maybeShowPrompt();
 
-  // Compter aussi quand la page est restaurée via le bouton retour du navigateur
   window.addEventListener('pageshow', (e) => {
     if (e.persisted) maybeShowPrompt();
   });

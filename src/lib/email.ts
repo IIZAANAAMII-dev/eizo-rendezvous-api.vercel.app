@@ -52,7 +52,20 @@ export async function sendConfirmationEmail(data: BookingEmailData): Promise<voi
 export async function sendBookingConfirmedEmail(data: BookingEmailData): Promise<void> {
   const subject = `Votre rendez-vous avec ${data.organizerName} est confirmé`;
   const body = buildCustomerEmailBody(data);
-  
+
+  const from = process.env.EMAIL_FROM || process.env.SMTP_USER || 'rendez-vous@eizo.fr';
+  await sendEmail({
+    to: data.customerEmail,
+    from,
+    subject,
+    html: body,
+  });
+}
+
+export async function sendBookingDeclinedEmail(data: BookingEmailData): Promise<void> {
+  const subject = `Votre demande de rendez-vous n'a pas pu être retenue`;
+  const body = buildBookingDeclinedBody(data);
+
   const from = process.env.EMAIL_FROM || process.env.SMTP_USER || 'rendez-vous@eizo.fr';
   await sendEmail({
     to: data.customerEmail,
@@ -226,6 +239,16 @@ function buildCustomerRequestBody(data: BookingEmailData): string {
     <p style="font-size: 13px; color: #6b7280; margin: 24px 0 0;">Vous recevrez un nouvel email dès que le rendez-vous sera confirmé.</p>
   `;
   return emailWrapper(body);
+}
+
+function buildBookingDeclinedBody(data: BookingEmailData): string {
+  const body = `
+    <p style="font-size: 16px; color: #111827; margin: 0 0 24px;">Bonjour ${escapeHtml(data.customerName)},</p>
+    <p style="font-size: 15px; color: #4b5563; line-height: 1.6; margin: 0 0 24px;">Malheureusement, votre demande de démonstration du <strong>${formatDate(data.date)}</strong> à <strong>${formatTime(data.time, data.endTime)}</strong> n'a pas pu être retenue. Le créneau n'est plus disponible.</p>
+    <p style="font-size: 15px; color: #4b5563; line-height: 1.6; margin: 0 0 24px;">Nous vous invitons à <a href="https://eizo-rendezvous-api-vercel-app.vercel.app/booking" style="color: #0066CC; text-decoration: none; font-weight: 600;">choisir un autre créneau</a> avec ${escapeHtml(data.organizerName)}.</p>
+    <p style="font-size: 13px; color: #6b7280; margin: 24px 0 0;">Nous vous prions de nous excuser pour ce désagrément. N'hésitez pas à nous contacter si vous avez des questions.</p>
+  `;
+  return emailWrapper(body, '#EF4444');
 }
 
 function buildCustomerEmailBody(data: BookingEmailData): string {

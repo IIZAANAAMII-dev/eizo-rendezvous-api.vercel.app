@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/lib/supabase';
-import { sendBookingConfirmedEmail } from '@/lib/email';
+import { sendBookingConfirmedEmail, sendBookingDeclinedEmail } from '@/lib/email';
 import { handleCors, withCors } from '@/lib/cors';
 
 function htmlResponse(title: string, message: string, success = true) {
@@ -111,6 +111,22 @@ export async function GET(request: NextRequest) {
       if (updateError) {
         console.error('[validate booking] decline error:', updateError);
         return withCors(NextResponse.json({ error: 'Failed to decline booking' }, { status: 500 }), request);
+      }
+
+      // Notifier le client
+      try {
+        await sendBookingDeclinedEmail({
+          customerName: booking.customer_name,
+          customerEmail: booking.customer_email,
+          date: booking.date,
+          time: booking.start_time.slice(0, 5),
+          endTime: booking.end_time ? booking.end_time.slice(0, 5) : undefined,
+          organizerName: organizer?.name || 'Expert EIZO',
+          organizerEmail: organizer?.email || '',
+          productTitle: booking.product_title || undefined,
+        });
+      } catch (emailError) {
+        console.error('[validate booking] decline customer email error:', emailError);
       }
 
       return htmlResponse('Rendez-vous refusé', 'Le créneau est de nouveau disponible.');

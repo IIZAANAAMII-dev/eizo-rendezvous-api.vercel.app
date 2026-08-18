@@ -1,5 +1,20 @@
 import nodemailer from 'nodemailer';
 
+interface RequestedProduct {
+  productId?: string;
+  title?: string;
+  handle?: string;
+  url?: string;
+}
+
+interface ViewedProduct {
+  productId?: string;
+  title?: string;
+  handle?: string;
+  url?: string;
+  viewedAt?: number;
+}
+
 export interface BookingEmailData {
   customerName: string;
   customerEmail: string;
@@ -13,6 +28,10 @@ export interface BookingEmailData {
   productHandle?: string;
   shopDomain?: string;
   notes?: string;
+  requestedProduct?: RequestedProduct | null;
+  productsViewed?: ViewedProduct[] | null;
+  customerNeed?: string | null;
+  customerUsage?: string | null;
   confirmationUrl?: string;
   declineUrl?: string;
 }
@@ -44,7 +63,7 @@ export async function sendBookingConfirmedEmail(data: BookingEmailData): Promise
 }
 
 export async function sendOrganizerNotification(data: BookingEmailData): Promise<void> {
-  const subject = `Nouveau rendez-vous - ${data.customerName} - ${data.date} à ${data.time}`;
+  const subject = `Nouvelle demande de démonstration EIZO - ${data.customerName} - ${data.date} à ${data.time}`;
   const body = buildOrganizerEmailBody(data);
   
   const from = process.env.EMAIL_FROM || process.env.SMTP_USER || 'rendez-vous@eizo.fr';
@@ -156,25 +175,50 @@ function emailWrapper(content: string, accentColor = '#0066CC'): string {
   `;
 }
 
+function escapeHtml(value: string | undefined | null): string {
+  if (!value) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 function detailRow(label: string, value: string): string {
   if (!value) return '';
-  return `<tr><td style="padding: 8px 0; color: #6b7280; font-size: 14px; vertical-align: top; white-space: nowrap;">${label}</td><td style="padding: 8px 0 8px 16px; color: #111827; font-size: 14px; font-weight: 500;">${value}</td></tr>`;
+  return `<tr><td style="padding: 8px 0; color: #6b7280; font-size: 14px; vertical-align: top; white-space: nowrap;">${escapeHtml(label)}</td><td style="padding: 8px 0 8px 16px; color: #111827; font-size: 14px; font-weight: 500;">${value}</td></tr>`;
+}
+
+function productLink(product: { title?: string; url?: string; handle?: string } | null | undefined): string {
+  if (!product) return '';
+  const title = escapeHtml(product.title || product.handle || 'Produit');
+  if (product.url) {
+    return `<a href="${escapeHtml(product.url)}" style="color: #0066CC;">${title}</a>`;
+  }
+  return title;
 }
 
 function buildCustomerRequestBody(data: BookingEmailData): string {
-  const productInfo = data.productTitle ? detailRow('Produit consulté', data.productTitle) : '';
-  const shop = data.shopDomain ? detailRow('Boutique', data.shopDomain) : '';
-  const phone = data.customerPhone ? detailRow('Téléphone', data.customerPhone) : '';
-  const note = data.notes ? `<tr><td colspan="2" style="padding-top: 12px; color: #6b7280; font-size: 14px;"><em>"${data.notes}"</em></td></tr>` : '';
+  const productInfo = data.requestedProduct?.title
+    ? detailRow('Démonstration souhaitée', productLink(data.requestedProduct))
+    : (data.productTitle ? detailRow('Produit consulté', escapeHtml(data.productTitle)) : '');
+  const usage = data.customerUsage ? detailRow('Utilisation', escapeHtml(data.customerUsage)) : '';
+  const need = data.customerNeed ? `<tr><td colspan="2" style="padding-top: 12px; color: #6b7280; font-size: 14px;"><em>"${escapeHtml(data.customerNeed)}"</em></td></tr>` : '';
+  const shop = data.shopDomain ? detailRow('Boutique', escapeHtml(data.shopDomain)) : '';
+  const phone = data.customerPhone ? detailRow('Téléphone', escapeHtml(data.customerPhone)) : '';
+  const note = data.notes ? `<tr><td colspan="2" style="padding-top: 12px; color: #6b7280; font-size: 14px;"><em>"${escapeHtml(data.notes)}"</em></td></tr>` : '';
 
   const body = `
-    <p style="font-size: 16px; color: #111827; margin: 0 0 24px;">Bonjour ${data.customerName},</p>
+    <p style="font-size: 16px; color: #111827; margin: 0 0 24px;">Bonjour ${escapeHtml(data.customerName)},</p>
     <p style="font-size: 15px; color: #4b5563; line-height: 1.6; margin: 0 0 24px;">Votre demande de rendez-vous a bien été enregistrée. Elle est en attente de validation par notre équipe.</p>
     <table style="width: 100%; border-collapse: collapse; background: #f9fafb; border-radius: 12px; padding: 20px; display: table;">
-      ${detailRow('Expert', data.organizerName)}
+      ${detailRow('Expert', escapeHtml(data.organizerName))}
       ${detailRow('Date', formatDate(data.date))}
       ${detailRow('Heure', formatTime(data.time, data.endTime))}
       ${productInfo}
+      ${usage}
+      ${need}
       ${shop}
       ${phone}
       ${note}
@@ -185,18 +229,24 @@ function buildCustomerRequestBody(data: BookingEmailData): string {
 }
 
 function buildCustomerEmailBody(data: BookingEmailData): string {
-  const productInfo = data.productTitle ? detailRow('Produit consulté', data.productTitle) : '';
-  const phone = data.customerPhone ? detailRow('Téléphone', data.customerPhone) : '';
-  const note = data.notes ? `<tr><td colspan="2" style="padding-top: 12px; color: #6b7280; font-size: 14px;"><em>"${data.notes}"</em></td></tr>` : '';
+  const productInfo = data.requestedProduct?.title
+    ? detailRow('Démonstration souhaitée', productLink(data.requestedProduct))
+    : (data.productTitle ? detailRow('Produit consulté', escapeHtml(data.productTitle)) : '');
+  const usage = data.customerUsage ? detailRow('Utilisation', escapeHtml(data.customerUsage)) : '';
+  const need = data.customerNeed ? `<tr><td colspan="2" style="padding-top: 12px; color: #6b7280; font-size: 14px;"><em>"${escapeHtml(data.customerNeed)}"</em></td></tr>` : '';
+  const phone = data.customerPhone ? detailRow('Téléphone', escapeHtml(data.customerPhone)) : '';
+  const note = data.notes ? `<tr><td colspan="2" style="padding-top: 12px; color: #6b7280; font-size: 14px;"><em>"${escapeHtml(data.notes)}"</em></td></tr>` : '';
 
   const body = `
-    <p style="font-size: 16px; color: #111827; margin: 0 0 24px;">Bonjour ${data.customerName},</p>
+    <p style="font-size: 16px; color: #111827; margin: 0 0 24px;">Bonjour ${escapeHtml(data.customerName)},</p>
     <p style="font-size: 15px; color: #4b5563; line-height: 1.6; margin: 0 0 24px;">Votre rendez-vous est confirmé. Voici les détails :</p>
     <table style="width: 100%; border-collapse: collapse; background: #f9fafb; border-radius: 12px; padding: 20px; display: table;">
-      ${detailRow('Expert', data.organizerName)}
+      ${detailRow('Expert', escapeHtml(data.organizerName))}
       ${detailRow('Date', formatDate(data.date))}
       ${detailRow('Heure', formatTime(data.time, data.endTime))}
       ${productInfo}
+      ${usage}
+      ${need}
       ${phone}
       ${note}
     </table>
@@ -206,27 +256,45 @@ function buildCustomerEmailBody(data: BookingEmailData): string {
 }
 
 function buildOrganizerEmailBody(data: BookingEmailData): string {
-  const productInfo = data.productTitle ? detailRow('Produit consulté', data.productTitle) : '';
-  const shop = data.shopDomain ? detailRow('Boutique', data.shopDomain) : '';
-  const phone = data.customerPhone ? detailRow('Téléphone', data.customerPhone) : '';
-  const note = data.notes ? `<tr><td colspan="2" style="padding-top: 12px; color: #6b7280; font-size: 14px;"><em>"${data.notes}"</em></td></tr>` : '';
+  const productRequested = data.requestedProduct?.title
+    ? detailRow('Démonstration souhaitée', productLink(data.requestedProduct))
+    : (data.productTitle ? detailRow('Démonstration souhaitée', escapeHtml(data.productTitle)) : '');
+  const usage = data.customerUsage ? detailRow('Utilisation', escapeHtml(data.customerUsage)) : '';
+  const need = data.customerNeed
+    ? `<tr><td colspan="2" style="padding-top: 12px; color: #6b7280; font-size: 14px;"><em>"${escapeHtml(data.customerNeed)}"</em></td></tr>`
+    : '';
+  const viewedProducts = (data.productsViewed && data.productsViewed.length)
+    ? `<tr><td colspan="2" style="padding-top: 16px;">
+         <p style="font-size: 13px; font-weight: 700; color: #111827; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.4px;">Produits ColorEdge consultés avant la demande</p>
+         <ul style="margin: 0; padding-left: 18px; color: #4b5563; font-size: 14px; line-height: 1.6;">
+           ${data.productsViewed.map(p => `<li style="margin-bottom: 4px;">${productLink(p)}</li>`).join('')}
+         </ul>
+       </td></tr>`
+    : '';
+  const shop = data.shopDomain ? detailRow('Boutique', escapeHtml(data.shopDomain)) : '';
+  const phone = data.customerPhone ? detailRow('Téléphone', escapeHtml(data.customerPhone)) : '';
+  const note = data.notes ? `<tr><td colspan="2" style="padding-top: 12px; color: #6b7280; font-size: 14px;"><em>"${escapeHtml(data.notes)}"</em></td></tr>` : '';
   const actions = (data.confirmationUrl && data.declineUrl)
     ? `<div style="margin-top: 28px; text-align: center;">
-         <a href="${data.confirmationUrl}" style="display: inline-block; background: #10B981; color: #fff; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; margin: 0 6px 8px;">Accepter le rendez-vous</a>
-         <a href="${data.declineUrl}" style="display: inline-block; background: #ffffff; color: #EF4444; border: 2px solid #EF4444; padding: 12px 26px; border-radius: 10px; text-decoration: none; font-weight: 600; margin: 0 6px 8px;">Refuser</a>
+         <a href="${escapeHtml(data.confirmationUrl)}" style="display: inline-block; background: #10B981; color: #fff; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; margin: 0 6px 8px;">Accepter le rendez-vous</a>
+         <a href="${escapeHtml(data.declineUrl)}" style="display: inline-block; background: #ffffff; color: #EF4444; border: 2px solid #EF4444; padding: 12px 26px; border-radius: 10px; text-decoration: none; font-weight: 600; margin: 0 6px 8px;">Refuser</a>
        </div>`
     : '';
 
   const body = `
     <p style="font-size: 16px; color: #111827; margin: 0 0 20px;">Bonjour Fred,</p>
-    <p style="font-size: 15px; color: #4b5563; line-height: 1.6; margin: 0 0 24px;">Une nouvelle demande de rendez-vous est à valider.</p>
+    <p style="font-size: 15px; color: #4b5563; line-height: 1.6; margin: 0 0 24px;">Une nouvelle demande de démonstration EIZO est à valider.</p>
     <table style="width: 100%; border-collapse: collapse; background: #f9fafb; border-radius: 12px; padding: 20px; display: table; margin-bottom: 8px;">
-      ${detailRow('Client', data.customerName)}
-      ${detailRow('Email', `<a href="mailto:${data.customerEmail}" style="color: #0066CC;">${data.customerEmail}</a>`)}
+      ${detailRow('Client', escapeHtml(data.customerName))}
+      ${detailRow('Email', `<a href="mailto:${escapeHtml(data.customerEmail)}" style="color: #0066CC;">${escapeHtml(data.customerEmail)}</a>`)}
       ${phone}
       ${detailRow('Date', formatDate(data.date))}
       ${detailRow('Heure', formatTime(data.time, data.endTime))}
-      ${productInfo}
+      ${detailRow('Expert', escapeHtml(data.organizerName))}
+      ${productRequested}
+      ${usage}
+      ${need}
+      ${viewedProducts}
       ${shop}
       ${note}
     </table>

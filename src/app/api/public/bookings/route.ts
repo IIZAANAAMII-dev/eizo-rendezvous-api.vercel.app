@@ -5,6 +5,65 @@ import { timeToMinutes, minutesToTime } from '@/lib/availability';
 import { sendConfirmationEmail, sendOrganizerNotification } from '@/lib/email';
 import { handleCors, withCors } from '@/lib/cors';
 
+interface ViewedProduct {
+  productId?: string;
+  title?: string;
+  handle?: string;
+  url?: string;
+  viewedAt?: number;
+}
+
+interface RequestedProduct {
+  productId?: string;
+  title?: string;
+  handle?: string;
+  url?: string;
+}
+
+function sanitizeString(value: unknown, maxLength = 2000): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (trimmed.length > maxLength) return trimmed.slice(0, maxLength);
+  return trimmed || null;
+}
+
+function sanitizeRequestedProduct(value: unknown): RequestedProduct | null {
+  if (!value || typeof value !== 'object') return null;
+  const v = value as Record<string, unknown>;
+  const allowed: RequestedProduct = {};
+  const productId = sanitizeString(v.productId, 120);
+  const title = sanitizeString(v.title, 300);
+  const handle = sanitizeString(v.handle, 120);
+  const url = sanitizeString(v.url, 2000);
+  if (productId) allowed.productId = productId;
+  if (title) allowed.title = title;
+  if (handle) allowed.handle = handle;
+  if (url) allowed.url = url;
+  return Object.keys(allowed).length ? allowed : null;
+}
+
+function sanitizeProductsViewed(value: unknown): ViewedProduct[] | null {
+  if (!Array.isArray(value)) return null;
+  const items: ViewedProduct[] = [];
+  for (const raw of value.slice(0, 20)) {
+    if (!raw || typeof raw !== 'object') continue;
+    const v = raw as Record<string, unknown>;
+    const item: ViewedProduct = {};
+    const productId = sanitizeString(v.productId, 120);
+    const title = sanitizeString(v.title, 300);
+    const handle = sanitizeString(v.handle, 120);
+    const url = sanitizeString(v.url, 2000);
+    const viewedAt = typeof v.viewedAt === 'number' ? v.viewedAt : undefined;
+    if (productId) item.productId = productId;
+    if (title) item.title = title;
+    if (handle) item.handle = handle;
+    if (url) item.url = url;
+    if (viewedAt !== undefined && Number.isFinite(viewedAt)) item.viewedAt = viewedAt;
+    if (Object.keys(item).length) items.push(item);
+  }
+  return items.length ? items : null;
+}
+
 export async function POST(request: NextRequest) {
   const preflight = handleCors(request);
   if (preflight) return preflight;
@@ -23,6 +82,10 @@ export async function POST(request: NextRequest) {
       productHandle,
       productId,
       shopDomain,
+      requestedProduct,
+      productsViewed,
+      customerNeed,
+      customerUsage,
     } = body;
 
     if (!organizerId || !date || !time || !customerName || !customerEmail) {
@@ -76,6 +139,11 @@ export async function POST(request: NextRequest) {
     const acceptUrl = `${appUrl}/api/public/booking-validate?token=${confirmationToken}&action=accept`;
     const declineUrl = `${appUrl}/api/public/booking-validate?token=${confirmationToken}&action=decline`;
 
+    const safeRequestedProduct = sanitizeRequestedProduct(requestedProduct);
+    const safeProductsViewed = sanitizeProductsViewed(productsViewed);
+    const safeCustomerNeed = sanitizeString(customerNeed, 2000);
+    const safeCustomerUsage = sanitizeString(customerUsage, 120);
+
     // Créer la réservation en attente de validation
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
@@ -93,6 +161,10 @@ export async function POST(request: NextRequest) {
         product_handle: productHandle || null,
         product_id: productId || null,
         shop_domain: shopDomain || null,
+        requested_product: safeRequestedProduct,
+        products_viewed: safeProductsViewed,
+        customer_need: safeCustomerNeed,
+        customer_usage: safeCustomerUsage,
         status: 'pending',
         confirmation_token: confirmationToken,
       })
@@ -119,6 +191,10 @@ export async function POST(request: NextRequest) {
         productHandle,
         shopDomain,
         notes,
+        requestedProduct: safeRequestedProduct,
+        productsViewed: safeProductsViewed,
+        customerNeed: safeCustomerNeed,
+        customerUsage: safeCustomerUsage,
         confirmationUrl: acceptUrl,
         declineUrl,
       };

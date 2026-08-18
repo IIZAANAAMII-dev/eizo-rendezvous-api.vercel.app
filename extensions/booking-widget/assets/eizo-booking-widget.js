@@ -8,6 +8,9 @@
     try { return window.localStorage; } catch { return null; }
   })();
 
+  const HISTORY_LIMIT = 10;
+  const DEBOUNCE_MS = 1200;
+
   function readConfig() {
     const el = document.getElementById(DATA_EL_ID);
     if (!el) return null;
@@ -69,16 +72,72 @@
     return isTag || isCollection || isVendor;
   }
 
-  function readSeen() {
+  function readRawHistory() {
     if (!LS) return [];
     try {
-      return JSON.parse(LS.getItem(SEEN_KEY) || '[]');
+      const raw = JSON.parse(LS.getItem(SEEN_KEY) || '[]');
+      return Array.isArray(raw) ? raw : [];
     } catch { return []; }
   }
 
-  function saveSeen(list) {
+  function migrateHistory(raw) {
+    // L'ancien format stockait un tableau de strings (timestamps ou handles).
+    // On migre vers un objet structuré en gardant les handles connus.
+    if (!raw.length) return [];
+    if (raw.length && typeof raw[0] === 'object' && raw[0] !== null) return raw;
+    return raw
+      .filter(item => typeof item === 'string')
+      .map((handle, idx) => ({ handle, viewedAt: Date.now() - (raw.length - idx) * 1000 }));
+  }
+
+  function readHistory() {
+    return migrateHistory(readRawHistory());
+  }
+
+  function saveHistory(list) {
     if (!LS) return;
-    try { LS.setItem(SEEN_KEY, JSON.stringify(list.slice(-10))); } catch {}
+    const trimmed = list.slice(-HISTORY_LIMIT);
+    try { LS.setItem(SEEN_KEY, JSON.stringify(trimmed)); } catch {}
+  }
+
+  function getCurrentProduct() {
+    if (TEMPLATE !== 'product' || !isColorEdgeProduct()) return null;
+    const productId = CONFIG.productId ? String(CONFIG.productId).split('/').pop() : undefined;
+    return {
+      productId,
+      handle: CONFIG.productHandle || '',
+      title: CONFIG.productTitle || '',
+      url: (typeof window !== 'undefined' ? window.location.href : ''),
+    };
+  }
+
+  function trackProductView() {
+    const current = getCurrentProduct();
+    if (!current) return;
+
+    const now = Date.now();
+    const history = readHistory().filter(item => item.handle !== current.handle);
+    history.push({ ...current, viewedAt: now });
+    saveHistory(history);
+  }
+
+  function isRevisitTooSoon() {
+    const history = readHistory();
+    const last = history[history.length - 1];
+    if (!last) return false;
+    const now = Date.now();
+    return (now - last.viewedAt) < DEBOUNCE_MS && last.handle === (CONFIG.productHandle || '');
+  }
+
+  function getUniqueColorEdgeCount() {
+    const history = readHistory();
+    const handles = new Set(history.map(item => item.handle).filter(Boolean));
+    return handles.size;
+  }
+
+  function getLastColorEdgeProduct() {
+    const history = readHistory();
+    return history[history.length - 1] || null;
   }
 
   function readPromptAnswer() {
@@ -91,21 +150,11 @@
     try { LS.setItem(PROMPT_KEY, answer); } catch {}
   }
 
-  function trackProductView() {
-    const isRelevant = TEMPLATE === 'product' || TEMPLATE === 'collection';
-    if (!isRelevant || !isColorEdgeProduct()) return;
-    const handle = CONFIG.productHandle || CONFIG.collectionHandle || TEMPLATE;
-    const seen = readSeen().filter(h => h !== handle);
-    seen.push(handle);
-    saveSeen(seen);
-  }
-
   function shouldShowPrompt() {
     if (!CONFIG.showPopup) return false;
-    if (TEMPLATE === 'product') return false;
     if (readPromptAnswer()) return false;
     const threshold = parseInt(CONFIG.triggerThreshold || '3', 10);
-    return readSeen().length >= threshold;
+    return getUniqueColorEdgeCount() >= threshold;
   }
 
   async function fetchOrganizer() {
@@ -120,7 +169,22 @@
     return res.json();
   }
 
+  function getRequestedProductFromPayload(payload) {
+    const current = getCurrentProduct();
+    const last = getLastColorEdgeProduct();
+    const product = payload.requestedProduct || current || last;
+    if (!product) return undefined;
+    return {
+      productId: product.productId,
+      title: product.title,
+      handle: product.handle,
+      url: product.url,
+    };
+  }
+
   async function createBooking(payload) {
+    const history = readHistory();
+    const requestedProduct = getRequestedProductFromPayload(payload);
     const res = await fetch(`${API_URL}/api/public/bookings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -131,6 +195,14 @@
         productTitle: CONFIG.productTitle,
         productHandle: CONFIG.productHandle,
         shopDomain: CONFIG.shopDomain,
+        requestedProduct,
+        productsViewed: history.length ? history.map(p => ({
+          productId: p.productId,
+          title: p.title,
+          handle: p.handle,
+          url: p.url,
+          viewedAt: p.viewedAt,
+        })) : undefined,
       }),
     });
     const data = await res.json().catch(() => ({}));
@@ -351,6 +423,27 @@
               <div class="eizo-bw-form-group">
                 <label class="eizo-bw-form-label" for="eizo-bw-phone">Téléphone</label>
                 <input class="eizo-bw-form-input" id="eizo-bw-phone" name="phone" type="tel" placeholder="+33 6 12 34 56 78">
+              </div>
+              <div class="eizo-bw-form-group" id="eizo-bw-product-field" style="display:none;">
+                <label class="eizo-bw-form-label" for="eizo-bw-requested-product">Démonstration souhaitée</label>
+                <select class="eizo-bw-form-input" id="eizo-bw-requested-product" name="requestedProduct"></select>
+                <p class="eizo-bw-form-subtitle" style="margin-top:4px;">Produit pour lequel vous souhaitez une démonstration</p>
+              </div>
+              <div class="eizo-bw-form-group">
+                <label class="eizo-bw-form-label" for="eizo-bw-usage">Votre utilisation</label>
+                <select class="eizo-bw-form-input" id="eizo-bw-usage" name="customerUsage">
+                  <option value="">-- Sélectionnez --</option>
+                  <option value="Photographie">Photographie</option>
+                  <option value="Vidéo">Vidéo</option>
+                  <option value="Retouche / post-production">Retouche / post-production</option>
+                  <option value="Impression / prépresse">Impression / prépresse</option>
+                  <option value="Graphisme">Graphisme</option>
+                  <option value="Autre">Autre</option>
+                </select>
+              </div>
+              <div class="eizo-bw-form-group">
+                <label class="eizo-bw-form-label" for="eizo-bw-need">Votre besoin</label>
+                <textarea class="eizo-bw-form-textarea" id="eizo-bw-need" name="customerNeed" rows="3" placeholder="Que souhaitez-vous découvrir ou comparer pendant la démonstration ?"></textarea>
               </div>
               <div class="eizo-bw-form-group">
                 <label class="eizo-bw-form-label" for="eizo-bw-notes">Notes / Questions</label>
@@ -625,11 +718,56 @@
     showStep('eizo-bw-step-calendar');
   }
 
+  function buildRequestedProductOptions() {
+    const history = readHistory();
+    const current = getCurrentProduct();
+    const options = [];
+    if (current) {
+      options.push({ ...current, label: current.title || current.handle, current: true });
+    }
+    for (let i = history.length - 1; i >= 0; i--) {
+      const p = history[i];
+      if (!p || options.some(o => o.handle === p.handle)) continue;
+      options.push({ ...p, label: p.title || p.handle, current: false });
+    }
+    return options;
+  }
+
+  function renderRequestedProductField() {
+    const field = document.getElementById('eizo-bw-product-field');
+    const select = document.getElementById('eizo-bw-requested-product');
+    if (!field || !select) return;
+
+    const options = buildRequestedProductOptions();
+    if (options.length === 0) {
+      field.style.display = 'none';
+      select.innerHTML = '';
+      return;
+    }
+
+    field.style.display = 'block';
+    select.innerHTML = options.map((p, idx) => {
+      const suffix = p.current ? ' (produit actuel)' : '';
+      return `<option value="${escapeHtml(p.handle)}" data-handle="${escapeHtml(p.handle)}" ${idx === 0 ? 'selected' : ''}>${escapeHtml(p.label)}${suffix}</option>`;
+    }).join('');
+  }
+
+  function getSelectedRequestedProduct() {
+    const select = document.getElementById('eizo-bw-requested-product');
+    if (!select) return null;
+    const option = select.options[select.selectedIndex];
+    if (!option) return null;
+    const handle = option.value;
+    const options = buildRequestedProductOptions();
+    return options.find(p => p.handle === handle) || null;
+  }
+
   function showForm(date, time, endTime) {
     const display = endTime ? `${formatTime(time)} - ${formatTime(endTime)}` : formatTime(time);
     const datetime = `${formatDate(date)} de ${display}`;
     document.getElementById('eizo-bw-selected-datetime').textContent = datetime;
     document.getElementById('eizo-bw-error').classList.add('eizo-bw-hidden');
+    renderRequestedProductField();
     showStep('eizo-bw-step-form');
     document.getElementById('eizo-bw-first-name').focus();
   }
@@ -655,6 +793,7 @@
     btn.innerHTML = '<span class="eizo-bw-loader"></span> Confirmation...';
 
     try {
+      const requestedProduct = getSelectedRequestedProduct();
       const result = await createBooking({
         date: state.selectedDate,
         time: state.selectedSlot,
@@ -662,6 +801,9 @@
         customerEmail: form.email.value.trim(),
         customerPhone: form.phone.value.trim() || undefined,
         notes: form.notes.value.trim() || undefined,
+        customerUsage: form.customerUsage.value.trim() || undefined,
+        customerNeed: form.customerNeed.value.trim() || undefined,
+        requestedProduct: requestedProduct || undefined,
       });
       showStep('eizo-bw-step-success');
       form.reset();
@@ -682,22 +824,32 @@
       .replace(/'/g, '&#039;');
   }
 
-  async function init() {
-    await buildWidget();
-    trackProductView();
+  let initRunning = false;
 
-    const answer = readPromptAnswer();
-    const should = shouldShowPrompt();
-    console.log('[EIZO Booking] init', { template: TEMPLATE, seen: readSeen().length, threshold: CONFIG.triggerThreshold, answer });
-    if (answer === 'no' || answer === 'yes') {
-      showMiniIcon();
-    } else if (should) {
-      setTimeout(showPrompt, POPUP_DELAY_MS);
+  async function init() {
+    if (initRunning) return;
+    initRunning = true;
+    try {
+      if (!state.widgetBuilt) await buildWidget();
+      trackProductView();
+
+      const answer = readPromptAnswer();
+      const should = shouldShowPrompt();
+      console.log('[EIZO Booking] init', { template: TEMPLATE, unique: getUniqueColorEdgeCount(), threshold: CONFIG.triggerThreshold, answer });
+      if (answer === 'no' || answer === 'yes') {
+        showMiniIcon();
+      } else if (should && !state.promptShown) {
+        setTimeout(showPrompt, POPUP_DELAY_MS);
+      }
+    } catch (err) {
+      console.error('[EIZO Booking] init error', err);
+    } finally {
+      initRunning = false;
     }
   }
 
   function runInit() {
-    init().catch(err => console.error('[EIZO Booking] init error', err));
+    init();
   }
 
   window.EIZO_BOOKING = {
@@ -706,7 +858,7 @@
   };
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', runInit);
+    document.addEventListener('DOMContentLoaded', runInit, { once: true });
   } else {
     runInit();
   }

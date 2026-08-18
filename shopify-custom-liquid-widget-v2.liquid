@@ -59,14 +59,18 @@
   #eizo-booking-widget .eizo-error { color: #EF4444; font-size: 14px; margin-bottom: 12px; }
   #eizo-booking-widget .eizo-success { text-align: center; padding: 40px 20px; color: #0B1220; }
   #eizo-booking-widget .eizo-success .icon { width: 72px; height: 72px; border-radius: 50%; background: rgba(16,185,129,0.1); color: #10B981; display: flex; align-items: center; justify-content: center; font-size: 36px; margin: 0 auto 24px; }
-  #eizo-booking-widget .eizo-prompt { display: none; position: fixed; inset: 0; z-index: 10000; align-items: center; justify-content: center; background: rgba(11,18,32,0.35); backdrop-filter: blur(12px); padding: 16px; opacity: 0; transition: opacity .4s ease; }
-  #eizo-booking-widget .eizo-prompt.active { display: flex; opacity: 1; }
-  #eizo-booking-widget .eizo-prompt-card { width: min(380px, 100%); background: rgba(255,255,255,0.97); border-radius: 28px; box-shadow: 0 32px 80px rgba(0,0,0,0.18); padding: 32px; text-align: center; transform: scale(0.92) translateY(20px); transition: transform .45s cubic-bezier(.16,1,.3,1); }
-  #eizo-booking-widget .eizo-prompt.active .eizo-prompt-card { transform: scale(1) translateY(0); }
-  #eizo-booking-widget .eizo-prompt-kicker { color: #0066CC; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin: 0 0 10px; }
-  #eizo-booking-widget .eizo-prompt-title { font-size: 20px; font-weight: 600; color: #0B1220; margin: 0 0 12px; line-height: 1.3; }
+  #eizo-booking-widget .eizo-prompt { display: flex; position: fixed; inset: 0; z-index: 10000; align-items: center; justify-content: center; background: rgba(11,18,32,0.35); backdrop-filter: blur(12px); padding: 16px; visibility: hidden; opacity: 0; transition: visibility .4s ease, opacity .4s ease; }
+  #eizo-booking-widget .eizo-prompt.active { visibility: visible; opacity: 1; }
+  #eizo-booking-widget .eizo-prompt-card { position: relative; width: min(360px, 100%); background: rgba(255,255,255,0.97); border-radius: 24px; box-shadow: 0 24px 60px rgba(0,0,0,0.16); padding: 28px; text-align: center; transform: scale(0.92) translateY(20px); opacity: 0; transition: transform .45s cubic-bezier(.16,1,.3,1), opacity .45s ease; }
+  #eizo-booking-widget .eizo-prompt.active .eizo-prompt-card { transform: scale(1) translateY(0); opacity: 1; }
+  #eizo-booking-widget .eizo-prompt-close { position: absolute; top: 14px; right: 16px; width: 30px; height: 30px; border: none; background: transparent; border-radius: 50%; cursor: pointer; font-size: 24px; line-height: 1; color: #9CA3AF; transition: color .2s, background .2s; display: flex; align-items: center; justify-content: center; }
+  #eizo-booking-widget .eizo-prompt-close:hover { color: #0066CC; background: rgba(0,102,204,0.08); }
+  #eizo-booking-widget .eizo-prompt-kicker { color: #0066CC; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin: 0 0 8px; }
+  #eizo-booking-widget .eizo-prompt-title { font-size: 19px; font-weight: 600; color: #0B1220; margin: 0 0 12px; line-height: 1.3; }
   #eizo-booking-widget .eizo-prompt-text { color: #5E6A7E; font-size: 14px; line-height: 1.6; margin: 0 0 20px; }
-  #eizo-booking-widget .eizo-prompt-small { color: #8B95A8; font-size: 11px; line-height: 1.5; margin: 0; }
+  #eizo-booking-widget .eizo-prompt-cta { display: inline-flex; align-items: center; justify-content: center; padding: 13px 26px; border: none; border-radius: 10px; background: #0066CC; color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; transition: filter .2s, transform .2s; }
+  #eizo-booking-widget .eizo-prompt-cta:hover { filter: brightness(1.06); transform: translateY(-1px); }
+  #eizo-booking-widget .eizo-prompt-small { color: #8B95A8; font-size: 11px; line-height: 1.5; margin: 14px 0 0; }
   #eizo-booking-widget .eizo-prompt-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
   #eizo-booking-widget .eizo-prompt-btn { padding: 12px 24px; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
   #eizo-booking-widget .eizo-prompt-btn-primary { background: #0066CC; color: #fff; }
@@ -102,10 +106,12 @@
 
   <div class="eizo-prompt" id="eizo-prompt">
     <div class="eizo-prompt-card">
+      <button class="eizo-prompt-close" id="eizo-prompt-close" type="button" aria-label="Fermer">×</button>
       <p class="eizo-prompt-kicker">Vous hésitez ?</p>
-      <h3 class="eizo-prompt-title">Un expert ColorEdge est à votre disposition</h3>
-      <p class="eizo-prompt-text">Vous comparez nos moniteurs. N’hésitez pas : Fred ROL vous accueille à Paris pour une démonstration personnalisée et vous aide à trouver le modèle adapté à votre usage.</p>
-      <p class="eizo-prompt-small">Sans engagement · 1 h à Prophot Paris</p>
+      <h3 class="eizo-prompt-title">Nous sommes à Paris pour vous aider</h3>
+      <p class="eizo-prompt-text">Vous comparez nos moniteurs ColorEdge. C’est normal, chaque usage a ses spécificités. Fred ROL peut vous faire une démonstration et répondre à vos questions.</p>
+      <button class="eizo-prompt-cta" id="eizo-prompt-cta" type="button">Choisir un créneau</button>
+      <p class="eizo-prompt-small">À Prophot, sans engagement · 1 heure</p>
     </div>
   </div>
 
@@ -426,12 +432,6 @@
     state.promptOpen = true;
     prompt.classList.add('active');
     savePromptState('shown');
-    // Ouverture automatique du calendrier après un temps de lecture du message
-    setTimeout(() => {
-      if (!state.promptOpen) return;
-      savePromptState('accepted');
-      openModal();
-    }, 2600);
   }
 
   function hidePrompt() {
@@ -632,13 +632,9 @@
   backdrop.addEventListener('click', e => { if (e.target === backdrop) closeModal(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); hidePrompt(); } });
 
-  prompt.addEventListener('click', e => {
-    if (e.target === prompt) {
-      hidePrompt();
-      savePromptState('dismissed');
-      showMini();
-    }
-  });
+  document.getElementById('eizo-prompt-cta').addEventListener('click', () => { hidePrompt(); savePromptState('accepted'); openModal(); });
+  document.getElementById('eizo-prompt-close').addEventListener('click', () => { hidePrompt(); savePromptState('dismissed'); showMini(); });
+  prompt.addEventListener('click', e => { if (e.target === prompt) { hidePrompt(); savePromptState('dismissed'); showMini(); } });
   mini.addEventListener('click', openModal);
 
   document.getElementById('eizo-prev').addEventListener('click', () => { state.currentMonth.setMonth(state.currentMonth.getMonth()-1); renderCalendar(state.currentMonth); });

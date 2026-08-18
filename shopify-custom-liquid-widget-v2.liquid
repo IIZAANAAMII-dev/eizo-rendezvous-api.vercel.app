@@ -1,5 +1,5 @@
 {% comment %}
-  EIZO Booking Widget v2.1 - Custom Liquid Modal
+  EIZO Booking Widget v2.2 - Custom Liquid Modal
   Copier-coller dans un block "Custom Liquid" sur les pages produits ColorEdge.
 {% endcomment %}
 
@@ -209,8 +209,10 @@
   const API_URL = 'https://eizo-rendezvous-api-vercel-app.vercel.app';
   const ORGANIZER_ID = 'coloredge';
   const WORKING_DAYS = [2, 5];
-  const HISTORY_LIMIT = 10;
+  const HISTORY_LIMIT = 20;
   const DEBOUNCE_MS = 1200;
+  const TRIGGER_THRESHOLD = 3;
+  const PROMPT_DELAY_MS = 800;
 
   const state = {
     currentMonth: new Date(),
@@ -218,15 +220,15 @@
     selectedTime: null,
     selectedEnd: null,
     monthData: {},
-    promptShown: false,
-    initRunning: false
+    promptOpen: false,
+    modalOpen: false,
+    processing: false,
+    navId: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`
   };
 
-  const trigger = document.getElementById('eizo-trigger');
-  const backdrop = document.getElementById('eizo-backdrop');
   const prompt = document.getElementById('eizo-prompt');
   const mini = document.getElementById('eizo-mini');
-  const close = document.getElementById('eizo-close');
+  const backdrop = document.getElementById('eizo-backdrop');
   const calendarEl = document.getElementById('eizo-calendar');
   const monthEl = document.getElementById('eizo-month');
 
@@ -264,28 +266,6 @@
     );
   }
 
-  function readRawHistory() {
-    try { const raw = JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'); return Array.isArray(raw) ? raw : []; } catch { return []; }
-  }
-
-  function migrateHistory(raw) {
-    if (!raw.length) return [];
-    if (raw.length && typeof raw[0] === 'object' && raw[0] !== null) return raw;
-    return raw
-      .filter(item => typeof item === 'string')
-      .map((handle, idx) => ({
-        handle,
-        title: handle,
-        viewedAt: Date.now() - (raw.length - idx) * 1000
-      }));
-  }
-
-  function readHistory() { return migrateHistory(readRawHistory()); }
-
-  function saveHistory(list) {
-    try { localStorage.setItem(SEEN_KEY, JSON.stringify(list.slice(-HISTORY_LIMIT))); } catch {}
-  }
-
   function getCurrentProduct() {
     const template = {{ template | json }};
     const productHandle = {{ product.handle | default: '' | json }};
@@ -300,49 +280,116 @@
     };
   }
 
-  function getLastColorEdgeProduct() {
-    const h = readHistory();
-    return h[h.length - 1] || null;
+  function readRawHistory() {
+    try { const raw = JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'); return Array.isArray(raw) ? raw : []; } catch { return []; }
   }
 
-  function getUniqueColorEdgeCount() {
-    const h = readHistory();
-    return new Set(h.map(p => p.handle).filter(Boolean)).size;
+  function migrateLegacyHistory(raw) {
+    if (!raw.length) return [];
+    if (typeof raw[0] === 'object' && raw[0] !== null) return raw;
+    return raw
+      .filter(item => typeof item === 'string' && item.startsWith('product:'))
+      .map((handle, idx) => {
+        const clean = handle.replace('product:', '');
+        return { handle: clean, title: clean, viewedAt: Date.now() - (raw.length - idx) * 1000 };
+      });
   }
 
-  function isRevisitTooSoon() {
-    const h = readHistory();
-    const last = h[h.length - 1];
-    if (!last) return false;
+  function readColorEdgeVisits() { return migrateLegacyHistory(readRawHistory()); }
+
+  function saveColorEdgeVisits(list) {
+    try { localStorage.setItem(SEEN_KEY, JSON.stringify(list.slice(-HISTORY_LIMIT))); } catch {}
+  }
+
+  function getColorEdgeVisitCount() { return readColorEdgeVisits().length; }
+
+  function getLastColorEdgeVisit() {
+    const v = readColorEdgeVisits();
+    return v[v.length - 1] || null;
+  }
+
+  function getUniqueViewedProducts() {
+    const v = readColorEdgeVisits();
+    const byHandle = {};
+    for (const p of v) {
+      if (!p.handle) continue;
+      const existing = byHandle[p.handle];
+      if (!existing || p.viewedAt > existing.viewedAt) {
+        byHandle[p.handle] = p;
+      }
+    }
+    return Object.values(byHandle);
+  }
+
+  function isTechnicalRevisit() {
     const current = getCurrentProduct();
     if (!current) return false;
-    return current.handle === last.handle && (Date.now() - last.viewedAt) < DEBOUNCE_MS;
+    const last = getLastColorEdgeVisit();
+    if (!last) return false;
+    if (last.handle !== current.handle) return false;
+    if (last.url !== current.url) return false;
+    return (Date.now() - last.viewedAt) < DEBOUNCE_MS;
   }
 
-  function trackView() {
+  function trackColorEdgeVisit() {
+    if (!isColorEdgePage()) return;
     const current = getCurrentProduct();
     if (!current) return;
-    if (isRevisitTooSoon()) return;
-    const h = readHistory().filter(p => p.handle !== current.handle);
-    h.push({ ...current, viewedAt: Date.now() });
-    saveHistory(h);
+    if (isTechnicalRevisit()) return;
+    const visits = readColorEdgeVisits();
+    visits.push({ ...current, viewedAt: Date.now() });
+    saveColorEdgeVisits(visits);
   }
 
-  function readPrompt() { try { return localStorage.getItem(PROMPT_KEY); } catch { return null; } }
-  function markPrompt(v) { try { localStorage.setItem(PROMPT_KEY, v); } catch {} }
-
-  function shouldPrompt() {
-    if (readPrompt()) return false;
-    return getUniqueColorEdgeCount() >= 3;
+  function readPromptState() {
+    try {
+      const raw = localStorage.getItem(PROMPT_KEY);
+      if (raw === 'yes' || raw === 'accepted') return 'accepted';
+      if (raw === 'no' || raw === 'dismissed' || raw === 'shown') return 'dismissed';
+      return raw;
+    } catch { return null; }
   }
 
-  function showPrompt() { if (!state.promptShown) { prompt.classList.add('active'); state.promptShown = true; } }
-  function hidePrompt() { prompt.classList.remove('active'); }
+  function savePromptState(value) {
+    try { localStorage.setItem(PROMPT_KEY, value); } catch {}
+  }
+
+  function shouldAutoShowPrompt() {
+    const s = readPromptState();
+    if (s === 'dismissed' || s === 'accepted') return false;
+    return getColorEdgeVisitCount() >= TRIGGER_THRESHOLD;
+  }
+
+  function showPrompt() {
+    if (state.promptOpen || state.modalOpen) return;
+    state.promptOpen = true;
+    prompt.classList.add('active');
+    savePromptState('shown');
+  }
+
+  function hidePrompt() {
+    prompt.classList.remove('active');
+    state.promptOpen = false;
+  }
+
   function showMini() { mini.classList.add('active'); }
   function hideMini() { mini.classList.remove('active'); }
 
-  function openModal() { backdrop.classList.add('active'); document.body.style.overflow = 'hidden'; showCalendar(); }
-  function closeModal() { backdrop.classList.remove('active'); document.body.style.overflow = ''; }
+  function openModal() {
+    state.modalOpen = true;
+    hidePrompt();
+    backdrop.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    showCalendar();
+  }
+
+  function closeModal() {
+    backdrop.classList.remove('active');
+    document.body.style.overflow = '';
+    state.modalOpen = false;
+    const s = readPromptState();
+    if (s === 'accepted' || s === 'dismissed') showMini();
+  }
 
   async function fetchSlots(date) {
     const res = await fetch(`${API_URL}/api/public/availability/${encodeURIComponent(ORGANIZER_ID)}?date=${date}&t=${Date.now()}`);
@@ -359,23 +406,20 @@
     return data.dates || {};
   }
 
-  function buildProductOptions() {
-    const h = readHistory();
-    const current = getCurrentProduct();
-    const options = [];
-    if (current) options.push({ ...current, label: current.title || current.handle, current: true });
-    for (let i = h.length - 1; i >= 0; i--) {
-      const p = h[i];
-      if (options.some(o => o.handle === p.handle)) continue;
-      options.push({ ...p, label: p.title || p.handle, current: false });
-    }
-    return options;
-  }
-
   function renderProductField() {
     const field = document.getElementById('eizo-product-field');
     const select = document.getElementById('eizo-requested-product');
-    const options = buildProductOptions();
+    const current = getCurrentProduct();
+    const unique = getUniqueViewedProducts();
+    const options = [];
+    if (current && !options.some(o => o.handle === current.handle)) {
+      options.push({ ...current, label: current.title || current.handle, current: true });
+    }
+    for (let i = unique.length - 1; i >= 0; i--) {
+      const p = unique[i];
+      if (options.some(o => o.handle === p.handle)) continue;
+      options.push({ ...p, label: p.title || p.handle, current: false });
+    }
     if (!options.length) { field.style.display = 'none'; select.innerHTML = ''; return; }
     field.style.display = 'block';
     select.innerHTML = options.map((p, i) => {
@@ -388,12 +432,12 @@
     const select = document.getElementById('eizo-requested-product');
     if (!select) return null;
     const handle = select.value;
-    return buildProductOptions().find(p => p.handle === handle) || null;
+    return getUniqueViewedProducts().find(p => p.handle === handle) || getCurrentProduct() || getLastColorEdgeVisit();
   }
 
   async function createBooking(payload) {
-    const history = readHistory();
-    const requested = getSelectedRequestedProduct() || getCurrentProduct() || getLastColorEdgeProduct();
+    const visits = readColorEdgeVisits();
+    const requested = getSelectedRequestedProduct();
     const res = await fetch(`${API_URL}/api/public/bookings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -406,7 +450,7 @@
           handle: requested.handle,
           url: requested.url
         } : undefined,
-        productsViewed: history.length ? history.map(p => ({
+        productsViewed: visits.length ? visits.map(p => ({
           productId: p.productId,
           title: p.title,
           handle: p.handle,
@@ -508,14 +552,14 @@
     renderCalendar(state.currentMonth);
   }
 
-  trigger.addEventListener('click', openModal);
-  close.addEventListener('click', closeModal);
+  document.getElementById('eizo-trigger').addEventListener('click', openModal);
+  document.getElementById('eizo-close').addEventListener('click', closeModal);
   backdrop.addEventListener('click', e => { if (e.target === backdrop) closeModal(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); hidePrompt(); } });
 
-  document.getElementById('eizo-prompt-yes').addEventListener('click', () => { hidePrompt(); markPrompt('yes'); openModal(); });
-  document.getElementById('eizo-prompt-no').addEventListener('click', () => { hidePrompt(); markPrompt('no'); showMini(); });
-  prompt.addEventListener('click', e => { if (e.target === prompt) { hidePrompt(); markPrompt('no'); showMini(); } });
+  document.getElementById('eizo-prompt-yes').addEventListener('click', () => { hidePrompt(); savePromptState('accepted'); openModal(); });
+  document.getElementById('eizo-prompt-no').addEventListener('click', () => { hidePrompt(); savePromptState('dismissed'); showMini(); });
+  prompt.addEventListener('click', e => { if (e.target === prompt) { hidePrompt(); savePromptState('dismissed'); showMini(); } });
   mini.addEventListener('click', openModal);
 
   document.getElementById('eizo-prev').addEventListener('click', () => { state.currentMonth.setMonth(state.currentMonth.getMonth()-1); renderCalendar(state.currentMonth); });
@@ -541,26 +585,48 @@
       this.style.display = 'none';
       document.getElementById('eizo-slots').innerHTML = '';
       document.getElementById('eizo-success').style.display = 'block';
+      savePromptState('accepted');
+      showMini();
     } catch (err) {
       document.getElementById('eizo-error').textContent = err.message || 'Erreur lors de la réservation.';
     } finally { btn.disabled = false; btn.textContent = original; }
   });
 
   function maybeShowPrompt() {
-    if (state.initRunning) return;
-    state.initRunning = true;
-    trackView();
-    renderCalendar(state.currentMonth);
-    const answer = readPrompt();
-    if (answer === 'yes' || answer === 'no') {
+    trackColorEdgeVisit();
+    const visits = getColorEdgeVisitCount();
+    const promptState = readPromptState();
+
+    console.log('[EIZO Booking]', {
+      visits,
+      currentProduct: getCurrentProduct()?.handle || null,
+      promptState
+    });
+
+    if (promptState === 'accepted' || promptState === 'dismissed') {
       showMini();
-    } else if (shouldPrompt() && !state.promptShown && !backdrop.classList.contains('active')) {
-      setTimeout(showPrompt, 800);
+      return;
     }
-    state.initRunning = false;
+
+    if (visits >= TRIGGER_THRESHOLD && !state.promptOpen && !state.modalOpen) {
+      setTimeout(() => {
+        if (state.promptOpen || state.modalOpen) return;
+        showPrompt();
+      }, PROMPT_DELAY_MS);
+    }
   }
 
-  maybeShowPrompt();
+  window.resetEizoBookingTracking = function () {
+    localStorage.removeItem(SEEN_KEY);
+    localStorage.removeItem(PROMPT_KEY);
+    console.log('[EIZO Booking] Tracking reset');
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', maybeShowPrompt, { once: true });
+  } else {
+    maybeShowPrompt();
+  }
 
   window.addEventListener('pageshow', (e) => {
     if (e.persisted) maybeShowPrompt();

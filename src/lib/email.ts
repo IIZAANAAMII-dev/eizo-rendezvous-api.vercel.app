@@ -263,11 +263,37 @@ function buildOrganizerEmailBody(data: BookingEmailData): string {
   const need = data.customerNeed
     ? `<tr><td colspan="2" style="padding-top: 12px; color: #6b7280; font-size: 14px;"><em>"${escapeHtml(data.customerNeed)}"</em></td></tr>`
     : '';
-  const viewedProducts = (data.productsViewed && data.productsViewed.length)
+  const viewedProductsList = (() => {
+    if (!data.productsViewed || !data.productsViewed.length) return [];
+    const counts = new Map<string, { product: ViewedProduct; count: number; lastViewedAt: number }>();
+    for (const p of data.productsViewed) {
+      const handle = p.handle || 'inconnu';
+      const existing = counts.get(handle);
+      const viewedAt = typeof p.viewedAt === 'number' ? p.viewedAt : 0;
+      if (!existing || viewedAt > existing.lastViewedAt) {
+        counts.set(handle, { product: p, count: (existing?.count || 0) + 1, lastViewedAt: viewedAt });
+      } else {
+        existing.count += 1;
+      }
+    }
+    const requestedHandle = data.requestedProduct?.handle;
+    return Array.from(counts.values())
+      .sort((a, b) => {
+        if (a.product.handle === requestedHandle) return -1;
+        if (b.product.handle === requestedHandle) return 1;
+        if (b.count !== a.count) return b.count - a.count;
+        return b.lastViewedAt - a.lastViewedAt;
+      });
+  })();
+
+  const viewedProducts = viewedProductsList.length
     ? `<tr><td colspan="2" style="padding-top: 16px;">
          <p style="font-size: 13px; font-weight: 700; color: #111827; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.4px;">Produits ColorEdge consultés avant la demande</p>
          <ul style="margin: 0; padding-left: 18px; color: #4b5563; font-size: 14px; line-height: 1.6;">
-           ${data.productsViewed.map(p => `<li style="margin-bottom: 4px;">${productLink(p)}</li>`).join('')}
+           ${viewedProductsList.map(({ product, count }) => {
+             const word = count === 1 ? 'consultation' : 'consultations';
+             return `<li style="margin-bottom: 4px;">${productLink(product)} — ${count} ${word}</li>`;
+           }).join('')}
          </ul>
        </td></tr>`
     : '';

@@ -148,6 +148,7 @@ function buildCustomerRequestBody(data: BookingEmailData): string {
   const need = data.customerNeed ? `<tr><td colspan="2" style="padding-top: 12px; color: #6b7280; font-size: 14px;"><em>"${escapeHtml(data.customerNeed)}"</em></td></tr>` : '';
   const phone = data.customerPhone ? detailRow('Téléphone', escapeHtml(data.customerPhone)) : '';
   const note = data.notes ? `<tr><td colspan="2" style="padding-top: 12px; color: #6b7280; font-size: 14px;"><em>"${escapeHtml(data.notes)}"</em></td></tr>` : '';
+  const location = detailRow('Lieu', siteConfig.showroom.lines.join(' · '));
 
   const body = `
     <p style="font-size: 16px; color: #111827; margin: 0 0 24px;">Bonjour ${escapeHtml(data.customerName)},</p>
@@ -160,6 +161,7 @@ function buildCustomerRequestBody(data: BookingEmailData): string {
       ${usage}
       ${need}
       ${phone}
+      ${location}
       ${note}
     </table>
     <p style="font-size: 13px; color: #6b7280; margin: 24px 0 0;">Vous recevrez un nouvel email dès que le rendez-vous sera confirmé.</p>
@@ -175,6 +177,7 @@ function buildCustomerConfirmedBody(data: BookingEmailData): string {
   const usage = data.customerUsage ? detailRow('Utilisation', escapeHtml(data.customerUsage)) : '';
   const need = data.customerNeed ? `<tr><td colspan="2" style="padding-top: 12px; color: #6b7280; font-size: 14px;"><em>"${escapeHtml(data.customerNeed)}"</em></td></tr>` : '';
   const note = data.notes ? `<tr><td colspan="2" style="padding-top: 12px; color: #6b7280; font-size: 14px;"><em>"${escapeHtml(data.notes)}"</em></td></tr>` : '';
+  const location = detailRow('Lieu', siteConfig.showroom.lines.join(' · '));
 
   const googleUrl = buildGoogleLink(data);
   const icsUrl = data.managementToken
@@ -194,6 +197,7 @@ function buildCustomerConfirmedBody(data: BookingEmailData): string {
       ${productInfo}
       ${usage}
       ${need}
+      ${location}
       ${note}
     </table>
     <div style="margin: 24px 0; text-align: center;">

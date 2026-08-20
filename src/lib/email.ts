@@ -276,11 +276,15 @@ function buildOrganizerEmailBody(data: BookingEmailData): string {
        </td></tr>`
     : '';
   const note = data.notes ? `<tr><td colspan="2" style="padding-top: 12px; color: #6b7280; font-size: 14px;"><em>"${escapeHtml(data.notes)}"</em></td></tr>` : '';
+  const icsUrl = data.managementToken
+    ? `${siteConfig.appUrl}/api/public/calendar/ics?token=${data.managementToken}&role=expert`
+    : '';
   const actions = (data.confirmationUrl && data.declineUrl)
     ? `<div style="margin-top: 28px; text-align: center;">
         <a href="${escapeHtml(data.confirmationUrl)}" style="display: inline-block; background: #10B981; color: #fff; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; margin: 0 6px 8px;">Accepter le rendez-vous</a>
         <a href="${escapeHtml(data.declineUrl)}" style="display: inline-block; background: #ffffff; color: #EF4444; border: 2px solid #EF4444; padding: 12px 26px; border-radius: 10px; text-decoration: none; font-weight: 600; margin: 0 6px 8px;">Refuser</a>
         ${data.cancelUrl ? `<a href="${escapeHtml(data.cancelUrl)}" style="display: inline-block; background: #ffffff; color: #6B7280; border: 2px solid #6B7280; padding: 12px 26px; border-radius: 10px; text-decoration: none; font-weight: 600; margin: 0 6px 8px;">Annuler</a>` : ''}
+        ${icsUrl ? `<a href="${escapeHtml(icsUrl)}" style="display: inline-block; background: #ffffff; color: #0066CC; border: 2px solid #0066CC; padding: 12px 26px; border-radius: 10px; text-decoration: none; font-weight: 600; margin: 0 6px 8px;">Ajouter à Outlook (.ics)</a>` : ''}
       </div>`
     : '';
 

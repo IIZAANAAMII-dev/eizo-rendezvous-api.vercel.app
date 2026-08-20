@@ -41,7 +41,7 @@ export const siteConfig = {
     email: process.env.CONTACT_EMAIL || 'fred@eizo.fr',
   },
   appUrl: normalizeAppUrl(),
-  emailFrom: process.env.EMAIL_FROM || process.env.SMTP_USER || 'rendez-vous@eizo.fr',
+  emailFrom: process.env.EMAIL_FROM || 'noreply@eizo.fr',
   environment: (process.env.EIZO_ENV || process.env.NODE_ENV || 'development'),
   testExpertEmail: process.env.EIZO_EXPERT_TEST_EMAIL || 'klegarrec@feeder.fr',
 };

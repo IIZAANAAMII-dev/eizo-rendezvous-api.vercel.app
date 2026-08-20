@@ -163,6 +163,10 @@ export async function GET(request: NextRequest) {
         ? `${siteConfig.appUrl}/api/public/calendar/ics?token=${booking.management_token}&role=expert`
         : '';
 
+      const startIso = `${booking.date}T${booking.start_time.slice(0, 5)}`;
+      const endIso = `${booking.date}T${booking.end_time.slice(0, 5)}`;
+      const outlookUrl = `https://outlook.office.com/calendar/0/deeplink/compose?subject=${encodeURIComponent(`Démonstration EIZO ColorEdge — ${booking.customer_name}`)}&startdt=${encodeURIComponent(startIso)}&enddt=${encodeURIComponent(endIso)}&body=${encodeURIComponent(`Client : ${booking.customer_name}\nTéléphone : ${booking.customer_phone || ''}\nEmail : ${booking.customer_email}\nLieu : ${siteConfig.showroom.fullAddress}`)}&location=${encodeURIComponent(siteConfig.showroom.fullAddress)}`;
+
       try {
         await sendBookingConfirmedEmail({
           customerName: booking.customer_name,
@@ -187,7 +191,8 @@ export async function GET(request: NextRequest) {
       const actions = `
         <div class="actions">
           <a href="${googleUrl}" target="_blank" class="btn btn-primary">Ajouter à Google Agenda</a>
-          ${icsUrl ? `<a href="${icsUrl}" class="btn btn-outline">Ajouter à Outlook (.ics)</a>` : ''}
+          ${outlookUrl ? `<a href="${outlookUrl}" target="_blank" class="btn btn-outline">Ajouter à Outlook</a>` : ''}
+          ${icsUrl ? `<a href="${icsUrl}" class="btn btn-outline">Télécharger .ics</a>` : ''}
         </div>
         ${manageUrl ? `<p style="margin-top: 16px; font-size: 13px; color: #6b7280;"><a href="${manageUrl}">Gérer le rendez-vous</a></p>` : ''}
       `;

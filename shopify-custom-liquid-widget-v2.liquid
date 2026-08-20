@@ -75,42 +75,48 @@
   #eizo-booking-widget .eizo-prompt-btn { padding: 12px 24px; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
   #eizo-booking-widget .eizo-prompt-btn-primary { background: #0066CC; color: #fff; }
   #eizo-booking-widget .eizo-prompt-btn-secondary { background: #F6F8FB; color: #0B1220; }
-  #eizo-booking-widget .eizo-mini { position: fixed; left: 24px; bottom: 24px; z-index: 9000; width: 48px; height: 48px; border: none; border-radius: 50%; background: rgba(255,255,255,0.95); color: #0066CC; cursor: pointer; box-shadow: 0 4px 20px rgba(0,102,204,0.15), 0 1px 2px rgba(0,0,0,0.05); display: none; align-items: center; justify-content: center; transform: translateY(20px) scale(0.85); opacity: 0; transition: transform .4s cubic-bezier(.16,1,.3,1), opacity .4s ease, box-shadow .2s; }
-  #eizo-booking-widget .eizo-mini.active { display: flex; transform: translateY(0) scale(1); opacity: 1; }
-  #eizo-booking-widget .eizo-mini:hover { transform: translateY(-3px) scale(1.08); box-shadow: 0 8px 28px rgba(0,102,204,0.22); }
-  #eizo-booking-widget .eizo-mini svg { width: 22px; height: 22px; stroke-width: 1.8; }
-  #eizo-booking-widget .eizo-mini-label { position: absolute; left: 58px; bottom: 12px; background: rgba(11,18,32,0.9); color: #fff; font-size: 12px; font-weight: 500; padding: 7px 12px; border-radius: 8px; white-space: nowrap; opacity: 0; transform: translateX(-8px); transition: all .25s ease; pointer-events: none; backdrop-filter: blur(4px); }
-  #eizo-booking-widget .eizo-mini:hover .eizo-mini-label { opacity: 1; transform: translateX(0); }
+  #eizo-booking-widget .eizo-floating-cta { position: fixed; top: 50%; right: 28px; z-index: 9000; display: none; align-items: center; gap: 10px; padding: 16px 22px; border: none; border-radius: 12px; background: #0066CC; color: #fff; font-size: 15px; font-weight: 600; line-height: 1.2; text-align: left; white-space: nowrap; cursor: pointer; box-shadow: 0 8px 28px rgba(0,102,204,0.22), 0 2px 6px rgba(0,0,0,0.08); transform: translateY(-50%); transition: transform .2s cubic-bezier(.16,1,.3,1), box-shadow .2s, filter .2s; }
+  #eizo-booking-widget .eizo-floating-cta.active { display: flex; }
+  #eizo-booking-widget .eizo-floating-cta:hover { transform: translateY(-50%) scale(1.03) translateX(-3px); box-shadow: 0 12px 36px rgba(0,102,204,0.28), 0 4px 10px rgba(0,0,0,0.1); }
+  #eizo-booking-widget .eizo-floating-cta:focus-visible { outline: 3px solid #fff; outline-offset: 3px; box-shadow: 0 0 0 4px rgba(0,102,204,0.35); }
+  #eizo-booking-widget .eizo-floating-cta svg { width: 20px; height: 20px; stroke-width: 2; flex-shrink: 0; }
+  #eizo-booking-widget .eizo-cta-text-mobile { display: none; }
   @media (max-width: 740px) {
     #eizo-booking-widget .eizo-modal { grid-template-columns: 1fr; width: 100%; height: 100%; max-height: 100%; border-radius: 0; }
     #eizo-booking-widget .eizo-sidebar { flex-direction: row; align-items: center; gap: 16px; padding: 20px; flex-wrap: wrap; }
     #eizo-booking-widget .eizo-avatar { width: 64px; height: 64px; font-size: 20px; }
     #eizo-booking-widget .eizo-profile, #eizo-booking-widget .eizo-logos { display: none; }
-    #eizo-booking-widget .eizo-mini { left: 16px; bottom: 16px; width: 48px; height: 48px; }
-    #eizo-booking-widget .eizo-mini-label { display: none; }
+    #eizo-booking-widget .eizo-floating-cta { top: auto; bottom: 24px; right: 16px; transform: none; padding: 13px 18px; font-size: 14px; border-radius: 999px; max-width: calc(100vw - 110px); }
+    #eizo-booking-widget .eizo-floating-cta:hover { transform: scale(1.03); }
+    #eizo-booking-widget .eizo-cta-text-desktop { display: none; }
+    #eizo-booking-widget .eizo-cta-text-mobile { display: inline; }
+  }
+  @media (max-width: 380px) {
+    #eizo-booking-widget .eizo-floating-cta { padding: 12px 16px; font-size: 13px; }
   }
 </style>
 
 <div id="eizo-booking-widget">
   <button class="eizo-trigger" id="eizo-trigger" type="button" style="display:none;" aria-hidden="true">📅 Prendre rendez-vous</button>
 
-  <button class="eizo-mini" id="eizo-mini" type="button" aria-label="Prendre rendez-vous">
+  <button class="eizo-floating-cta" id="eizo-floating-cta" type="button" aria-haspopup="dialog" aria-label="Réserver une démo ColorEdge">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <rect x="3" y="4" width="18" height="18" rx="3" ry="3"></rect>
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
       <line x1="16" y1="2" x2="16" y2="6"></line>
       <line x1="8" y1="2" x2="8" y2="6"></line>
       <line x1="3" y1="10" x2="21" y2="10"></line>
     </svg>
-    <span class="eizo-mini-label">Prendre rendez-vous</span>
+    <span class="eizo-cta-text eizo-cta-text-desktop">Réserver une démo ColorEdge</span>
+    <span class="eizo-cta-text eizo-cta-text-mobile">Réserver une démo</span>
   </button>
 
   <div class="eizo-prompt" id="eizo-prompt">
     <div class="eizo-prompt-card">
       <button class="eizo-prompt-close" id="eizo-prompt-close" type="button" aria-label="Fermer">×</button>
       <p class="eizo-prompt-kicker">Vous hésitez ?</p>
-      <h3 class="eizo-prompt-title">Nous sommes à Paris pour vous aider</h3>
-      <p class="eizo-prompt-text">Vous comparez nos moniteurs ColorEdge. C’est normal, chaque usage a ses spécificités. Fred ROL peut vous faire une démonstration et répondre à vos questions.</p>
-      <button class="eizo-prompt-cta" id="eizo-prompt-cta" type="button">Choisir un créneau</button>
+      <h3 class="eizo-prompt-title">Découvrez le ColorEdge adapté à votre usage</h3>
+      <p class="eizo-prompt-text">Vous comparez nos moniteurs ColorEdge ? C'est normal : chaque usage a ses spécificités. Notre expert EIZO vous accompagne pour identifier le modèle le plus adapté à votre environnement de travail et répondre à vos questions.</p>
+      <button class="eizo-prompt-cta" id="eizo-prompt-cta" type="button">Réserver ma démonstration</button>
       <p class="eizo-prompt-small">À Prophot, sans engagement · 1 heure</p>
     </div>
   </div>
@@ -119,38 +125,31 @@
     <div class="eizo-modal">
       <div class="eizo-sidebar">
         <div class="eizo-avatar" id="eizo-avatar">
-          <img src="https://eizo-rendezvous-api-vercel-app.vercel.app/media/image.png" alt="Fred ROL">
+          <img src="https://eizo-rendezvous-api-vercel-app.vercel.app/media/image.png" alt="Expert EIZO ColorEdge">
         </div>
         <div>
-          <p class="eizo-name" id="eizo-name">Fred ROL</p>
+          <p class="eizo-name" id="eizo-name">Notre expert EIZO</p>
           <p class="eizo-specialty" id="eizo-specialty">ColorEdge</p>
         </div>
         <div class="eizo-profile" id="eizo-profile">
           <div class="eizo-profile-section">
-            <p class="eizo-profile-line">Rendez-vous 1 heure</p>
-            <p class="eizo-profile-line">Paris (Magasin Prophot)</p>
+            <p class="eizo-profile-line">Démonstration ColorEdge</p>
+            <p class="eizo-profile-line">Prophot Paris</p>
             <p class="eizo-profile-line eizo-mute">Mardi et Vendredi</p>
             <p class="eizo-profile-line eizo-mute">09h30 - 10h30 / 12h - 13h</p>
             <p class="eizo-profile-line eizo-mute">14h - 15h / 16h30 - 17h30</p>
           </div>
           <div class="eizo-profile-section">
             <p class="eizo-profile-label">Votre expert</p>
-            <p class="eizo-profile-line">Ingénieur Avant-vente & Après-vente</p>
-            <p class="eizo-profile-line">Solutions Graphiques</p>
-            <p class="eizo-profile-line">Pre-Sales & After-Sales Graphic Solutions Engineer</p>
+            <p class="eizo-profile-line">Spécialiste EIZO ColorEdge</p>
+            <p class="eizo-profile-line">Solutions Graphiques & Calibration</p>
           </div>
           <div class="eizo-profile-section">
-            <p class="eizo-profile-line"><a href="tel:+33634416976" class="eizo-link">Mobile +33 6 34 41 69 76</a></p>
-            <p class="eizo-profile-line"><a href="mailto:fred.rol@feeder.fr" class="eizo-link">fred.rol@feeder.fr</a></p>
-            <p class="eizo-profile-line"><a href="mailto:fred@eizo.fr" class="eizo-link">fred@eizo.fr</a></p>
-            <p class="eizo-profile-line eizo-mute">12 rue Paul Dautier - 78140 Vélizy Villacoublay</p>
-            <p class="eizo-profile-line eizo-mute">Standard +33 4 42 15 84 00</p>
-            <p class="eizo-profile-line eizo-mute">www.feeder.fr - www.eizo.fr</p>
-          </div>
-        </div>
-        <div class="eizo-logos" id="eizo-logos">
-          <div class="eizo-logos-wrap">
-            <img src="https://eizo-rendezvous-api-vercel-app.vercel.app/media/telechargement.png" alt="Feeder - EIZO France" class="eizo-logo">
+            <p class="eizo-profile-label" style="color:#0B1220;">CONTACT</p>
+            <p class="eizo-profile-line eizo-mute">Prophot Paris</p>
+            <p class="eizo-profile-line eizo-mute">103 Boulevard Beaumarchais</p>
+            <p class="eizo-profile-line eizo-mute">75003 PARIS — FRANCE</p>
+            <p class="eizo-profile-line" style="margin-top:8px;"><a href="https://www.google.com/maps/search/?api=1&amp;query=Prophot+Paris%2C103+Boulevard+Beaumarchais%2C75003+Paris%2CFrance" target="_blank" class="eizo-link">Voir le showroom sur Google Maps →</a></p>
           </div>
         </div>
       </div>
@@ -187,8 +186,8 @@
           </div>
           <label for="eizo-email">Email *</label>
           <input id="eizo-email" name="email" type="email" required placeholder="votre@email.com">
-          <label for="eizo-phone">Téléphone</label>
-          <input id="eizo-phone" name="phone" placeholder="Votre numéro de téléphone">
+          <label for="eizo-phone">Téléphone *</label>
+          <input id="eizo-phone" name="phone" type="tel" required placeholder="Votre numéro de téléphone">
 
           <div id="eizo-product-field" style="display:none;">
             <label for="eizo-requested-product">Démonstration souhaitée</label>
@@ -216,8 +215,8 @@
 
         <div id="eizo-success" class="eizo-success" style="display:none;">
           <div class="icon">✓</div>
-          <h3>Rendez-vous enregistré</h3>
-          <p>Vous recevrez un email de confirmation dès que Fred aura validé votre demande.</p>
+          <h3>Demande enregistrée</h3>
+          <p>Votre demande de rendez-vous a bien été reçue. Vous recevrez un email de confirmation dès que notre expert l'aura validée.</p>
         </div>
       </div>
     </div>
@@ -267,7 +266,7 @@
   };
 
   const prompt = document.getElementById('eizo-prompt');
-  const mini = document.getElementById('eizo-mini');
+  const mini = document.getElementById('eizo-floating-cta');
   const backdrop = document.getElementById('eizo-backdrop');
   const calendarEl = document.getElementById('eizo-calendar');
   const monthEl = document.getElementById('eizo-month');
@@ -307,6 +306,23 @@
     ) || (
       isColoredgeUrl
     );
+  }
+
+  const HIDE_CTA_PATHS = ['confirmation', 'merci', 'manage', 'accepter', 'refuser', 'appointment'];
+  function isBookingFlowPage() {
+    const path = (window.location.pathname || '').toLowerCase();
+    return HIDE_CTA_PATHS.some(p => path.includes(p));
+  }
+  function shouldShowFloatingCta() { return isColorEdgePage() && !isBookingFlowPage(); }
+  function updateFloatingCtaVisibility() {
+    if (shouldShowFloatingCta() && !state.promptOpen && !state.modalOpen) { showMini(); }
+    else { hideMini(); }
+  }
+  function trackFloatingCtaClick() {
+    try {
+      if (typeof gtag === 'function') gtag('event', 'appointment_cta_click', { event_category: 'engagement', event_label: 'Réserver une démo ColorEdge' });
+      if (typeof window.dataLayer !== 'undefined' && Array.isArray(window.dataLayer)) window.dataLayer.push({ event: 'appointment_cta_click' });
+    } catch {}
   }
 
   function getCurrentProduct() {
@@ -440,6 +456,7 @@
     state.promptOpen = true;
     prompt.classList.add('active');
     savePromptState('shown');
+    hideMini();
   }
 
   function hidePrompt() {
@@ -453,6 +470,7 @@
   function openModal() {
     state.modalOpen = true;
     hidePrompt();
+    hideMini();
     backdrop.classList.add('active');
     document.body.style.overflow = 'hidden';
     showCalendar();
@@ -462,8 +480,7 @@
     backdrop.classList.remove('active');
     document.body.style.overflow = '';
     state.modalOpen = false;
-    const s = readPromptState();
-    if (s === 'accepted' || s === 'dismissed') showMini();
+    updateFloatingCtaVisibility();
   }
 
   async function fetchSlots(date) {
@@ -644,9 +661,9 @@
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); hidePrompt(); } });
 
   document.getElementById('eizo-prompt-cta').addEventListener('click', () => { hidePrompt(); savePromptState('accepted'); openModal(); });
-  document.getElementById('eizo-prompt-close').addEventListener('click', () => { hidePrompt(); savePromptState('dismissed'); showMini(); });
-  prompt.addEventListener('click', e => { if (e.target === prompt) { hidePrompt(); savePromptState('dismissed'); showMini(); } });
-  mini.addEventListener('click', openModal);
+  document.getElementById('eizo-prompt-close').addEventListener('click', () => { hidePrompt(); savePromptState('dismissed'); updateFloatingCtaVisibility(); });
+  prompt.addEventListener('click', e => { if (e.target === prompt) { hidePrompt(); savePromptState('dismissed'); updateFloatingCtaVisibility(); } });
+  mini.addEventListener('click', () => { trackFloatingCtaClick(); openModal(); });
 
   document.getElementById('eizo-prev').addEventListener('click', () => { state.currentMonth.setMonth(state.currentMonth.getMonth()-1); renderCalendar(state.currentMonth); });
   document.getElementById('eizo-next').addEventListener('click', () => { state.currentMonth.setMonth(state.currentMonth.getMonth()+1); renderCalendar(state.currentMonth); });
@@ -657,13 +674,19 @@
     const btn = this.querySelector('button[type="submit"]');
     const original = btn.textContent; btn.disabled = true; btn.textContent = 'Confirmation...';
     document.getElementById('eizo-error').textContent = '';
+    const customerPhone = document.getElementById('eizo-phone').value.trim();
+    if (!customerPhone) {
+      document.getElementById('eizo-error').textContent = 'Le numéro de téléphone est obligatoire.';
+      btn.disabled = false; btn.textContent = original;
+      return;
+    }
     try {
       await createBooking({
         date: state.selectedDate,
         time: state.selectedTime,
         customerName: `${document.getElementById('eizo-firstName').value.trim()} ${document.getElementById('eizo-lastName').value.trim()}`,
         customerEmail: document.getElementById('eizo-email').value.trim(),
-        customerPhone: document.getElementById('eizo-phone').value.trim() || undefined,
+        customerPhone,
         notes: document.getElementById('eizo-notes').value.trim() || undefined,
         customerUsage: document.getElementById('eizo-usage').value.trim() || undefined,
         customerNeed: document.getElementById('eizo-need').value.trim() || undefined
@@ -672,7 +695,7 @@
       document.getElementById('eizo-slots').innerHTML = '';
       document.getElementById('eizo-success').style.display = 'block';
       savePromptState('accepted');
-      showMini();
+      updateFloatingCtaVisibility();
     } catch (err) {
       document.getElementById('eizo-error').textContent = err.message || 'Erreur lors de la réservation.';
     } finally { btn.disabled = false; btn.textContent = original; }
@@ -708,10 +731,9 @@
       modalOpen: state.modalOpen
     });
 
-    if (promptState === 'accepted' || promptState === 'dismissed') {
-      showMini();
-      return;
-    }
+    updateFloatingCtaVisibility();
+
+    if (promptState === 'accepted' || promptState === 'dismissed') return;
 
     if (!isCollectionPage()) return;
 

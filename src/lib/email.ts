@@ -211,12 +211,16 @@ function buildBookingDeclinedBody(data: BookingEmailData): string {
     ? `${siteConfig.appUrl}/manage/${data.managementToken}`
     : '';
 
+  const rescheduleUrl = data.shopDomain && data.productHandle
+    ? `https://${data.shopDomain}/products/${data.productHandle}`
+    : `${siteConfig.appUrl}/booking/coloredge`;
+
   const body = `
     <p style="font-size: 16px; color: #111827; margin: 0 0 24px;">Bonjour ${escapeHtml(data.customerName)},</p>
     <p style="font-size: 15px; color: #4b5563; line-height: 1.6; margin: 0 0 24px;">Malheureusement, le créneau demandé pour votre démonstration EIZO ColorEdge le <strong>${formatDate(data.date)}</strong> de <strong>${formatTime(data.time, data.endTime)}</strong> n'est plus disponible.</p>
     <p style="font-size: 15px; color: #4b5563; line-height: 1.6; margin: 0 0 24px;">Nous vous invitons à choisir un autre créneau avec notre expert EIZO.</p>
     <div style="margin: 24px 0; text-align: center;">
-      <a href="${siteConfig.appUrl}/booking" style="display: inline-block; background: #0066CC; color: #fff; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600;">Choisir un autre créneau</a>
+      <a href="${rescheduleUrl}" style="display: inline-block; background: #0066CC; color: #fff; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600;">Choisir un autre créneau</a>
     </div>
     ${manageUrl ? `<p style="font-size: 13px; color: #6b7280; margin: 8px 0 0; text-align: center;"><a href="${manageUrl}" style="color: #0066CC; text-decoration: none; font-weight: 600;">Gérer mes rendez-vous</a></p>` : ''}
     ${contactBlock()}
@@ -333,6 +337,63 @@ export async function sendOrganizerNotification(data: BookingEmailData): Promise
     from: siteConfig.emailFrom,
     subject,
     html: buildOrganizerEmailBody(data),
+  });
+}
+
+function buildBookingCancelledBody(data: BookingEmailData): string {
+  const rescheduleUrl = data.shopDomain && data.productHandle
+    ? `https://${data.shopDomain}/products/${data.productHandle}`
+    : `${siteConfig.appUrl}/booking/coloredge`;
+
+  const body = `
+    <p style="font-size: 16px; color: #111827; margin: 0 0 24px;">Bonjour ${escapeHtml(data.customerName)},</p>
+    <p style="font-size: 15px; color: #4b5563; line-height: 1.6; margin: 0 0 24px;">Votre rendez-vous EIZO ColorEdge du <strong>${formatDate(data.date)}</strong> de <strong>${formatTime(data.time, data.endTime)}</strong> a bien été annulé.</p>
+    <div style="margin: 24px 0; text-align: center;">
+      <a href="${rescheduleUrl}" style="display: inline-block; background: #0066CC; color: #fff; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600;">Choisir un autre créneau</a>
+    </div>
+    ${contactBlock()}
+  `;
+  return emailWrapper(body, '#6B7280');
+}
+
+function buildOrganizerCancelledBody(data: BookingEmailData): string {
+  const productInfo = data.requestedProduct?.title
+    ? detailRow('Démonstration souhaitée', productLink(data.requestedProduct))
+    : (data.productTitle ? detailRow('Produit consulté', escapeHtml(data.productTitle)) : '');
+
+  const body = `
+    <p style="font-size: 16px; color: #111827; margin: 0 0 20px;">Bonjour,</p>
+    <p style="font-size: 15px; color: #4b5563; line-height: 1.6; margin: 0 0 24px;">Le client a annulé son rendez-vous EIZO ColorEdge.</p>
+    <table style="width: 100%; border-collapse: collapse; background: #f9fafb; border-radius: 12px; padding: 20px; display: table; margin-bottom: 8px;">
+      ${detailRow('Client', escapeHtml(data.customerName))}
+      ${detailRow('Email', `<a href="mailto:${escapeHtml(data.customerEmail)}" style="color: #0066CC; text-decoration: none;">${escapeHtml(data.customerEmail)}</a>`)}
+      ${data.customerPhone ? detailRow('Téléphone', `<a href="tel:${escapeHtml(data.customerPhone)}" style="color: #0066CC; text-decoration: none;">${escapeHtml(data.customerPhone)}</a>`) : ''}
+      ${detailRow('Date', formatDate(data.date))}
+      ${detailRow('Heure', formatTime(data.time, data.endTime))}
+      ${productInfo}
+    </table>
+    <p style="font-size: 13px; color: #6b7280; margin: 8px 0 0;">Ce créneau est de nouveau disponible.</p>
+  `;
+  return emailWrapper(body, '#6B7280');
+}
+
+export async function sendBookingCancelledEmail(data: BookingEmailData): Promise<void> {
+  const subject = `Votre rendez-vous EIZO ColorEdge a été annulé`;
+  await sendEmail({
+    to: data.customerEmail,
+    from: siteConfig.emailFrom,
+    subject,
+    html: buildBookingCancelledBody(data),
+  });
+}
+
+export async function sendOrganizerCancellationNotification(data: BookingEmailData): Promise<void> {
+  const subject = `Annulation de rendez-vous EIZO ColorEdge — ${data.customerName} — ${data.date} à ${data.time}`;
+  await sendEmail({
+    to: data.organizerEmail,
+    from: siteConfig.emailFrom,
+    subject,
+    html: buildOrganizerCancelledBody(data),
   });
 }
 

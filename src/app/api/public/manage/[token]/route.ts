@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/lib/supabase';
 import { timeToMinutes, minutesToTime } from '@/lib/availability';
-import { sendConfirmationEmail, sendOrganizerNotification } from '@/lib/email';
+import { sendConfirmationEmail, sendOrganizerNotification, sendBookingCancelledEmail, sendOrganizerCancellationNotification } from '@/lib/email';
 import { getExpertEmail, siteConfig } from '@/lib/config';
 import { handleCors, withCors } from '@/lib/cors';
 
@@ -100,6 +100,33 @@ export async function PATCH(
       if (updateError) {
         console.error('[manage booking] cancel error:', updateError);
         return withCors(NextResponse.json({ error: 'Failed to cancel booking' }, { status: 500 }), request);
+      }
+
+      const emailData = {
+        customerName: booking.customer_name,
+        customerEmail: booking.customer_email,
+        customerPhone: booking.customer_phone || undefined,
+        date: booking.date,
+        time: booking.start_time.slice(0, 5),
+        endTime: booking.end_time ? booking.end_time.slice(0, 5) : undefined,
+        organizerName: organizer.name,
+        organizerEmail: getExpertEmail(organizer.email, organizer.notification_email),
+        productTitle: booking.product_title || undefined,
+        productHandle: booking.product_handle || undefined,
+        shopDomain: booking.shop_domain || undefined,
+        requestedProduct: booking.requested_product,
+        customerUsage: booking.customer_usage,
+        customerNeed: booking.customer_need,
+        managementToken: booking.management_token,
+      };
+
+      try {
+        await Promise.all([
+          sendBookingCancelledEmail(emailData),
+          sendOrganizerCancellationNotification(emailData),
+        ]);
+      } catch (emailError) {
+        console.error('[manage booking] cancel email error:', emailError);
       }
 
       return withCors(NextResponse.json({ success: true, status: 'cancelled' }), request);

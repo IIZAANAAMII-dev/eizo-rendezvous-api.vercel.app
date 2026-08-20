@@ -37,8 +37,8 @@ export const siteConfig = {
     },
   },
   contact: {
-    phone: process.env.CONTACT_PHONE || undefined,
-    email: process.env.CONTACT_EMAIL || undefined,
+    phone: process.env.CONTACT_PHONE || '+33 6 34 41 69 76',
+    email: process.env.CONTACT_EMAIL || 'fred@eizo.fr',
   },
   appUrl: normalizeAppUrl(),
   emailFrom: process.env.EMAIL_FROM || process.env.SMTP_USER || 'rendez-vous@eizo.fr',

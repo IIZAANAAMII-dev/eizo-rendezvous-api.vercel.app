@@ -102,8 +102,11 @@ export default function ManageBookingPage() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Erreur');
-      setMessage('Votre rendez-vous a été annulé.');
+      setMessage('Votre rendez-vous a été annulé. Vous allez être redirigé pour prendre un autre créneau.');
       setBooking(prev => prev ? { ...prev, status: 'cancelled' } : null);
+      setTimeout(() => {
+        window.location.href = `${siteConfig.appUrl}/booking/${organizer?.slug || 'coloredge'}`;
+      }, 2000);
     } catch (err: any) {
       setMessage(err.message || 'Erreur lors de l\'annulation.');
     } finally {

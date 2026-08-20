@@ -200,10 +200,11 @@ export async function PATCH(
 
         const acceptUrl = `${siteConfig.appUrl}/api/public/booking-validate?token=${updated.confirmation_token}&action=accept`;
         const declineUrl = `${siteConfig.appUrl}/api/public/booking-validate?token=${updated.confirmation_token}&action=decline`;
+        const cancelUrl = `${siteConfig.appUrl}/api/public/booking-validate?token=${updated.confirmation_token}&action=cancel`;
 
         await Promise.all([
-          sendConfirmationEmail({ ...emailData, confirmationUrl: acceptUrl, declineUrl }),
-          sendOrganizerNotification({ ...emailData, confirmationUrl: acceptUrl, declineUrl }),
+          sendConfirmationEmail({ ...emailData, confirmationUrl: acceptUrl, declineUrl, cancelUrl }),
+          sendOrganizerNotification({ ...emailData, confirmationUrl: acceptUrl, declineUrl, cancelUrl }),
         ]);
       } catch (emailError) {
         console.error('[manage booking] email error:', emailError);

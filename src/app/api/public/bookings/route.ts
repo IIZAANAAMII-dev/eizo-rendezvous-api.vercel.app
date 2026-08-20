@@ -148,6 +148,7 @@ export async function POST(request: NextRequest) {
     const managementToken = randomUUID();
     const acceptUrl = `${siteConfig.appUrl}/api/public/booking-validate?token=${confirmationToken}&action=accept`;
     const declineUrl = `${siteConfig.appUrl}/api/public/booking-validate?token=${confirmationToken}&action=decline`;
+    const cancelUrl = `${siteConfig.appUrl}/api/public/booking-validate?token=${confirmationToken}&action=cancel`;
 
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
@@ -201,6 +202,7 @@ export async function POST(request: NextRequest) {
         customerUsage,
         confirmationUrl: acceptUrl,
         declineUrl,
+        cancelUrl,
         managementToken,
       };
 

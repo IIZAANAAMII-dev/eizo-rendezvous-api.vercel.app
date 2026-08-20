@@ -36,6 +36,7 @@ export interface BookingEmailData {
   customerUsage?: string | null;
   confirmationUrl?: string;
   declineUrl?: string;
+  cancelUrl?: string;
   managementToken?: string;
 }
 
@@ -279,6 +280,7 @@ function buildOrganizerEmailBody(data: BookingEmailData): string {
     ? `<div style="margin-top: 28px; text-align: center;">
         <a href="${escapeHtml(data.confirmationUrl)}" style="display: inline-block; background: #10B981; color: #fff; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; margin: 0 6px 8px;">Accepter le rendez-vous</a>
         <a href="${escapeHtml(data.declineUrl)}" style="display: inline-block; background: #ffffff; color: #EF4444; border: 2px solid #EF4444; padding: 12px 26px; border-radius: 10px; text-decoration: none; font-weight: 600; margin: 0 6px 8px;">Refuser</a>
+        ${data.cancelUrl ? `<a href="${escapeHtml(data.cancelUrl)}" style="display: inline-block; background: #ffffff; color: #6B7280; border: 2px solid #6B7280; padding: 12px 26px; border-radius: 10px; text-decoration: none; font-weight: 600; margin: 0 6px 8px;">Annuler</a>` : ''}
       </div>`
     : '';
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/lib/supabase';
-import { sendBookingConfirmedEmail, sendBookingDeclinedEmail } from '@/lib/email';
+import { sendBookingConfirmedEmail, sendBookingDeclinedEmail, sendBookingCancelledEmail } from '@/lib/email';
 import { siteConfig } from '@/lib/config';
 import { buildGoogleCalendarUrl, buildIcsCalendar } from '@/lib/calendar';
 import { handleCors, withCors } from '@/lib/cors';
@@ -18,13 +18,23 @@ function formatTime(time: string): string {
   return time.slice(0, 5);
 }
 
-function htmlPage(title: string, content: string, success = true) {
+function htmlPage(title: string, content: string, success = true, redirectUrl = '') {
   const color = success ? '#10B981' : '#EF4444';
+  const redirectMeta = redirectUrl
+    ? `<meta http-equiv="refresh" content="3;url=${redirectUrl}">`
+    : '';
+  const redirectJs = redirectUrl
+    ? `<script>setTimeout(function(){ window.location.href = '${redirectUrl}'; }, 3000);</script>`
+    : '';
+  const redirectHtml = redirectUrl
+    ? `<p style="font-size: 13px; color: #6b7280; margin-top: 20px;">Vous allez être redirigé dans 3 secondes. <a href="${redirectUrl}" style="color: #0066CC; text-decoration: none;">Cliquez ici si ça n’ouvre pas.</a></p>`
+    : '';
   return `<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  ${redirectMeta}
   <title>${title}</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f6f8fb; color: #0b1220; }
@@ -49,7 +59,9 @@ function htmlPage(title: string, content: string, success = true) {
     <div class="icon">${success ? '✓' : '✕'}</div>
     <h1>${title}</h1>
     ${content}
+    ${redirectHtml}
   </div>
+  ${redirectJs}
 </body>
 </html>`;
 }
@@ -63,7 +75,7 @@ export async function GET(request: NextRequest) {
     const token = searchParams.get('token');
     const action = searchParams.get('action');
 
-    if (!token || !['accept', 'decline'].includes(action || '')) {
+    if (!token || !['accept', 'decline', 'cancel'].includes(action || '')) {
       return withCors(NextResponse.json({ error: 'Requête invalide' }, { status: 400 }), request);
     }
 
@@ -98,6 +110,13 @@ export async function GET(request: NextRequest) {
         <p><span>Expert :</span> ${organizer?.name || 'Expert EIZO'}</p>
       </div>
     `;
+
+    const manageUrl = booking.management_token
+      ? `${siteConfig.appUrl}/manage/${booking.management_token}`
+      : `${siteConfig.appUrl}/booking`;
+    const rescheduleUrl = (booking.shop_domain && booking.product_handle)
+      ? `https://${booking.shop_domain}/products/${booking.product_handle}`
+      : `${siteConfig.appUrl}/booking`;
 
     if (action === 'accept') {
       if (booking.status === 'confirmed') {
@@ -144,10 +163,6 @@ export async function GET(request: NextRequest) {
         ? `${siteConfig.appUrl}/api/public/calendar/ics?token=${booking.management_token}&role=expert`
         : '';
 
-      const manageUrl = booking.management_token
-        ? `${siteConfig.appUrl}/manage/${booking.management_token}`
-        : '';
-
       try {
         await sendBookingConfirmedEmail({
           customerName: booking.customer_name,
@@ -186,7 +201,7 @@ export async function GET(request: NextRequest) {
       `;
 
       return new NextResponse(
-        htmlPage('Rendez-vous accepté', `${commonDetails}<p>Le rendez-vous avec ${booking.customer_name} est confirmé.</p>${actions}${contact}`, true),
+        htmlPage('Rendez-vous accepté', `${commonDetails}<p>Le rendez-vous avec ${booking.customer_name} est confirmé.</p>${actions}${contact}`, true, manageUrl),
         { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
       );
     }
@@ -244,7 +259,53 @@ export async function GET(request: NextRequest) {
       `;
 
       return new NextResponse(
-        htmlPage('Rendez-vous refusé', `${commonDetails}<p>La demande de ${booking.customer_name} pour le ${dateLabel} de ${timeLabel} à ${endTimeLabel} a été refusée.</p><p>Le client a été informé et peut choisir un autre créneau.</p>${contact}`, false),
+        htmlPage('Rendez-vous refusé', `${commonDetails}<p>La demande de ${booking.customer_name} pour le ${dateLabel} de ${timeLabel} à ${endTimeLabel} a été refusée.</p><p>Le client a été informé et peut choisir un autre créneau.</p>${contact}`, false, manageUrl),
+        { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+      );
+    }
+
+    if (action === 'cancel') {
+      if (booking.status === 'cancelled') {
+        return new NextResponse(
+          htmlPage('Déjà annulé', `${commonDetails}<p>Ce rendez-vous a déjà été annulé.</p>`, false, manageUrl),
+          { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+        );
+      }
+
+      const { error: updateError } = await supabase
+        .from('bookings')
+        .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
+        .eq('id', booking.id);
+
+      if (updateError) {
+        console.error('[validate booking] cancel error:', updateError);
+        return withCors(NextResponse.json({ error: 'Failed to cancel booking' }, { status: 500 }), request);
+      }
+
+      try {
+        await sendBookingCancelledEmail({
+          customerName: booking.customer_name,
+          customerEmail: booking.customer_email,
+          customerPhone: booking.customer_phone || undefined,
+          date: booking.date,
+          time: booking.start_time.slice(0, 5),
+          endTime: booking.end_time ? booking.end_time.slice(0, 5) : undefined,
+          organizerName: organizer?.name || 'Expert EIZO',
+          organizerEmail: organizer?.email || '',
+          productTitle: booking.product_title || undefined,
+          productHandle: booking.product_handle || undefined,
+          shopDomain: booking.shop_domain || undefined,
+          requestedProduct: booking.requested_product,
+          customerUsage: booking.customer_usage,
+          customerNeed: booking.customer_need,
+          managementToken: booking.management_token,
+        });
+      } catch (emailError) {
+        console.error('[validate booking] cancel customer email error:', emailError);
+      }
+
+      return new NextResponse(
+        htmlPage('Rendez-vous annulé', `${commonDetails}<p>Le rendez-vous a bien été annulé. Le client en a été informé.</p>`, true, manageUrl),
         { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
       );
     }

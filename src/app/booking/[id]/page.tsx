@@ -6,7 +6,8 @@ import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Calendar, Clock, ArrowLeft, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, MapPin, ArrowLeft, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { siteConfig } from '@/lib/config';
 import gsap from 'gsap';
 
 interface Organizer {
@@ -15,6 +16,8 @@ interface Organizer {
   email: string;
   specialty: string;
   avatar_url?: string;
+  slot_duration_minutes?: number;
+  working_days?: Record<string, { start: string; end: string }[]>;
 }
 
 interface TimeSlot {
@@ -37,6 +40,7 @@ export default function BookingCalendarPage() {
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [availableDays, setAvailableDays] = useState<DayAvailability[]>([]);
+  const [monthSlots, setMonthSlots] = useState<Record<string, any[]>>({});
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [bookingData, setBookingData] = useState({ name: '', email: '', phone: '', notes: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,6 +62,25 @@ export default function BookingCalendarPage() {
       setLoading(false);
     }
   };
+
+  const fetchMonthSlots = async (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    try {
+      const response = await fetch(`/api/public/availability/${params.id}?month=${year}-${month}`);
+      const data = await response.json();
+      setMonthSlots(data.dates || {});
+    } catch (error) {
+      console.error('Failed to fetch month slots:', error);
+      setMonthSlots({});
+    }
+  };
+
+  useEffect(() => {
+    if (params.id) {
+      fetchMonthSlots(currentMonth);
+    }
+  }, [currentMonth, params.id]);
 
   const getInitials = (name: string) => {
     return name
@@ -192,21 +215,24 @@ export default function BookingCalendarPage() {
                     src={organizer.avatar_url}
                     initials={getInitials(organizer.name)}
                     size="xl"
-                    status="online"
                   />
                   <div>
-                    <h2 className="text-xl font-semibold text-gray-900">{organizer.name}</h2>
+                    <h2 className="text-xl font-semibold text-gray-900">{organizer.name === 'Fred ROL' ? 'Notre expert EIZO' : organizer.name}</h2>
                     <p className="text-sm text-gray-600">{organizer.specialty || 'Expert EIZO'}</p>
                   </div>
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Clock className="w-4 h-4" />
-                    <span>30 min de rendez-vous</span>
+                    <span>{organizer.slot_duration_minutes === 60 ? '1 heure' : `${organizer.slot_duration_minutes || 60} min`} de rendez-vous</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <MapPin className="w-4 h-4" />
+                    <span>{siteConfig.showroom.name}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Calendar className="w-4 h-4" />
-                    <span>En ligne</span>
+                    <span>En présentiel</span>
                   </div>
                 </div>
               </CardContent>
@@ -248,19 +274,23 @@ export default function BookingCalendarPage() {
                     const isSelected = selectedDate?.toDateString() === date.toDateString();
                     const isPast = date < today;
                     const isToday = date.toDateString() === today.toDateString();
+                    const dateStr = date.toISOString().split('T')[0];
+                    const slots = monthSlots[dateStr] || [];
+                    const hasAvailable = slots.some(s => s.available);
+                    const isDisabled = isPast || !hasAvailable;
 
                     return (
                       <button
                         key={index}
-                        onClick={() => !isPast && handleDateClick(date)}
-                        disabled={isPast}
+                        onClick={() => !isDisabled && handleDateClick(date)}
+                        disabled={isDisabled}
                         className={`p-3 rounded-lg text-center transition-all ${
                           isSelected
                             ? 'bg-[#0066cc] text-white shadow-md'
                             : isToday
                             ? 'bg-blue-100 text-[#0066cc] font-semibold'
-                            : isPast
-                            ? 'text-gray-300 cursor-not-allowed'
+                            : isDisabled
+                            ? 'text-gray-300 cursor-not-allowed bg-transparent'
                             : 'hover:bg-gray-100 text-gray-700'
                         }`}
                       >

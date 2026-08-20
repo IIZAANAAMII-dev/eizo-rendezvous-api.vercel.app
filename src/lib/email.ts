@@ -444,10 +444,11 @@ async function sendWithSmtp(payload: SendEmailPayload): Promise<void> {
   });
 
   await transporter.sendMail({
-    from: { name: 'EIZO ColorEdge', address: payload.from },
+    from: { name: 'EIZO ColorEdge', address: process.env.SMTP_USER || payload.from },
     to: payload.to,
     subject: payload.subject,
     html: payload.html,
+    replyTo: payload.from,
   });
 }
 

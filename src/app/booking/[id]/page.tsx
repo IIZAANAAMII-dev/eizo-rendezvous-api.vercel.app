@@ -113,6 +113,10 @@ export default function BookingCalendarPage() {
   };
 
   const handleBookingSubmit = async () => {
+    if (!bookingData.name.trim() || !bookingData.email.trim() || !bookingData.phone.trim()) {
+      alert('Veuillez renseigner votre nom, email et téléphone.');
+      return;
+    }
     setIsSubmitting(true);
     try {
       const response = await fetch('/api/public/bookings', {
@@ -122,18 +126,19 @@ export default function BookingCalendarPage() {
           organizerId: params.id,
           date: selectedDate?.toISOString().split('T')[0],
           time: selectedTime,
-          clientName: bookingData.name,
-          clientEmail: bookingData.email,
-          clientPhone: bookingData.phone,
+          customerName: bookingData.name,
+          customerEmail: bookingData.email,
+          customerPhone: bookingData.phone,
           notes: bookingData.notes,
         }),
       });
 
       if (response.ok) {
-        alert('Rendez-vous confirmé !');
+        alert('Demande enregistrée. Vous recevrez un email de confirmation dès validation.');
         router.push('/booking');
       } else {
-        alert('Erreur lors de la réservation');
+        const error = await response.json();
+        alert(error.error || 'Erreur lors de la réservation');
       }
     } catch (error) {
       console.error('Failed to create booking:', error);
@@ -327,9 +332,10 @@ export default function BookingCalendarPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Téléphone (optionnel)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Téléphone <span className="text-red-500">*</span></label>
                 <input
                   type="tel"
+                  required
                   value={bookingData.phone}
                   onChange={(e) => setBookingData({ ...bookingData, phone: e.target.value })}
                   placeholder="+33 6 12 34 56 78"

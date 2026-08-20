@@ -104,7 +104,7 @@ export async function GET(
           .eq('organizer_id', organizer.id)
           .gte('date', startDate)
           .lte('date', endDate)
-          .neq('status', 'cancelled');
+          .in('status', ['pending', 'confirmed']);
         if (error) {
           console.error('[public availability month] bookings fetch error:', error);
         } else {
@@ -142,7 +142,7 @@ export async function GET(
         .select('start_time')
         .eq('organizer_id', organizer.id)
         .eq('date', date)
-        .neq('status', 'cancelled');
+        .in('status', ['pending', 'confirmed']);
       if (error) {
         console.error('[public availability] bookings fetch error:', error);
       } else {

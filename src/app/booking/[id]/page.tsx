@@ -22,6 +22,7 @@ interface Organizer {
 
 interface TimeSlot {
   time: string;
+  end: string;
   available: boolean;
 }
 
@@ -90,6 +91,9 @@ export default function BookingCalendarPage() {
       .toUpperCase()
       .slice(0, 2);
   };
+
+  const formatTime = (t: string) => t ? t.slice(0, 5) : '';
+  const formatSlot = (slot: TimeSlot) => `${formatTime(slot.time)} - ${formatTime(slot.end)}`;
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -314,7 +318,7 @@ export default function BookingCalendarPage() {
                         key={index}
                         onClick={() => slot.available && handleTimeClick(slot.time)}
                         disabled={!slot.available}
-                        className={`p-3 rounded-lg border-2 transition-all ${
+                        className={`p-3 rounded-lg border-2 transition-all text-sm ${
                           selectedTime === slot.time
                             ? 'border-[#0066cc] bg-blue-50 text-[#0066cc]'
                             : slot.available
@@ -322,7 +326,7 @@ export default function BookingCalendarPage() {
                             : 'border-gray-100 text-gray-300 cursor-not-allowed'
                         }`}
                       >
-                        {slot.time}
+                        {formatSlot(slot)}
                       </button>
                     ))}
                   </div>

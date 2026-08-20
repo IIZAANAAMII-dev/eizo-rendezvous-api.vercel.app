@@ -203,7 +203,7 @@ function buildCustomerConfirmedBody(data: BookingEmailData): string {
     </table>
     <div style="margin: 24px 0; text-align: center;">
       <a href="${googleUrl}" target="_blank" style="display: inline-block; background: #10B981; color: #fff; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; margin: 0 6px 8px;">Ajouter à Google Agenda</a>
-      ${icsUrl ? `<a href="${icsUrl}" style="display: inline-block; background: #ffffff; color: #10B981; border: 2px solid #10B981; padding: 12px 26px; border-radius: 10px; text-decoration: none; font-weight: 600; margin: 0 6px 8px;">Télécharger .ics</a>` : ''}
+      ${icsUrl ? `<a href="${icsUrl}" style="display: inline-block; background: #ffffff; color: #10B981; border: 2px solid #10B981; padding: 12px 26px; border-radius: 10px; text-decoration: none; font-weight: 600; margin: 0 6px 8px;">Ajouter à Outlook (.ics)</a>` : ''}
     </div>
     ${manageUrl ? `<p style="font-size: 13px; color: #6b7280; margin: 8px 0 0;"><a href="${manageUrl}" style="color: #0066CC; text-decoration: none; font-weight: 600;">Gérer mon rendez-vous</a></p>` : ''}
     ${contactBlock()}
@@ -444,7 +444,7 @@ async function sendWithSmtp(payload: SendEmailPayload): Promise<void> {
   });
 
   await transporter.sendMail({
-    from: process.env.SMTP_USER || payload.from,
+    from: { name: 'EIZO ColorEdge', address: payload.from },
     to: payload.to,
     subject: payload.subject,
     html: payload.html,

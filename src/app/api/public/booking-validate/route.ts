@@ -187,7 +187,7 @@ export async function GET(request: NextRequest) {
       const actions = `
         <div class="actions">
           <a href="${googleUrl}" target="_blank" class="btn btn-primary">Ajouter à Google Agenda</a>
-          ${icsUrl ? `<a href="${icsUrl}" class="btn btn-outline">Télécharger .ics</a>` : ''}
+          ${icsUrl ? `<a href="${icsUrl}" class="btn btn-outline">Ajouter à Outlook (.ics)</a>` : ''}
         </div>
         ${manageUrl ? `<p style="margin-top: 16px; font-size: 13px; color: #6b7280;"><a href="${manageUrl}">Gérer le rendez-vous</a></p>` : ''}
       `;

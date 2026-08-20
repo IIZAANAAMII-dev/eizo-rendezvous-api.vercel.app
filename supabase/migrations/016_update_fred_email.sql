@@ -1,7 +1,7 @@
--- Update Fred ROL organizer email to fred.rol@feeder.fr
+-- Update Fred ROL organizer email to klegarrec@feeder.fr
 
 UPDATE organizers
 SET
-  email = 'fred.rol@feeder.fr',
-  notification_email = 'fred.rol@feeder.fr'
+  email = 'klegarrec@feeder.fr',
+  notification_email = 'klegarrec@feeder.fr'
 WHERE slug = 'coloredge';

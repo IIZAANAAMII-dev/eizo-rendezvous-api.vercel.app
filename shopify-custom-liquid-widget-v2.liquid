@@ -108,9 +108,9 @@
     <div class="eizo-prompt-card">
       <button class="eizo-prompt-close" id="eizo-prompt-close" type="button" aria-label="Fermer">×</button>
       <p class="eizo-prompt-kicker">Vous hésitez ?</p>
-      <h3 class="eizo-prompt-title">Nous sommes à Paris pour vous aider</h3>
-      <p class="eizo-prompt-text">Vous comparez nos moniteurs ColorEdge. C’est normal, chaque usage a ses spécificités. Fred ROL peut vous faire une démonstration et répondre à vos questions.</p>
-      <button class="eizo-prompt-cta" id="eizo-prompt-cta" type="button">Choisir un créneau</button>
+      <h3 class="eizo-prompt-title">Découvrez le ColorEdge adapté à votre usage</h3>
+      <p class="eizo-prompt-text">Vous comparez nos moniteurs ColorEdge ? C'est normal : chaque usage a ses spécificités. Notre expert EIZO vous accompagne pour identifier le modèle le plus adapté à votre environnement de travail et répondre à vos questions.</p>
+      <button class="eizo-prompt-cta" id="eizo-prompt-cta" type="button">Réserver ma démonstration</button>
       <p class="eizo-prompt-small">À Prophot, sans engagement · 1 heure</p>
     </div>
   </div>
@@ -140,17 +140,18 @@
             <p class="eizo-profile-line">Pre-Sales & After-Sales Graphic Solutions Engineer</p>
           </div>
           <div class="eizo-profile-section">
-            <p class="eizo-profile-line"><a href="tel:+33634416976" class="eizo-link">Mobile +33 6 34 41 69 76</a></p>
-            <p class="eizo-profile-line"><a href="mailto:fred.rol@feeder.fr" class="eizo-link">fred.rol@feeder.fr</a></p>
+            <p class="eizo-profile-label" style="color:#0B1220;">CONTACT</p>
+            <p class="eizo-profile-line eizo-mute">Prophot Paris</p>
+            <p class="eizo-profile-line eizo-mute">103 Boulevard Beaumarchais</p>
+            <p class="eizo-profile-line eizo-mute">75003 PARIS - FRANCE</p>
+            <p class="eizo-profile-line" style="margin-top:8px;"><a href="tel:+33634416976" class="eizo-link">Mobile +33 6 34 41 69 76</a></p>
             <p class="eizo-profile-line"><a href="mailto:fred@eizo.fr" class="eizo-link">fred@eizo.fr</a></p>
-            <p class="eizo-profile-line eizo-mute">12 rue Paul Dautier - 78140 Vélizy Villacoublay</p>
-            <p class="eizo-profile-line eizo-mute">Standard +33 4 42 15 84 00</p>
-            <p class="eizo-profile-line eizo-mute">www.feeder.fr - www.eizo.fr</p>
+            <p class="eizo-profile-line" style="margin-top:8px;"><a href="https://www.google.com/maps/search/?api=1&amp;query=Prophot+Paris%2C103+Boulevard+Beaumarchais%2C75003+Paris%2CFrance" target="_blank" class="eizo-link">Voir le showroom sur Google Maps →</a></p>
           </div>
         </div>
         <div class="eizo-logos" id="eizo-logos">
           <div class="eizo-logos-wrap">
-            <img src="https://eizo-rendezvous-api-vercel-app.vercel.app/media/telechargement.png" alt="Feeder - EIZO France" class="eizo-logo">
+            <img src="https://eizo.fr/cdn/shop/files/EIZO-Logo_RGB.png?v=1732704479&width=310" alt="EIZO" class="eizo-logo">
           </div>
         </div>
       </div>
@@ -187,8 +188,8 @@
           </div>
           <label for="eizo-email">Email *</label>
           <input id="eizo-email" name="email" type="email" required placeholder="votre@email.com">
-          <label for="eizo-phone">Téléphone</label>
-          <input id="eizo-phone" name="phone" placeholder="Votre numéro de téléphone">
+          <label for="eizo-phone">Téléphone *</label>
+          <input id="eizo-phone" name="phone" type="tel" required placeholder="Votre numéro de téléphone">
 
           <div id="eizo-product-field" style="display:none;">
             <label for="eizo-requested-product">Démonstration souhaitée</label>
@@ -206,8 +207,8 @@
             <option value="Autre">Autre</option>
           </select>
 
-          <label for="eizo-need">Votre besoin</label>
-          <textarea id="eizo-need" name="customerNeed" rows="3" placeholder="Que souhaitez-vous découvrir ou comparer pendant la démonstration ?"></textarea>
+          <label for="eizo-need">Votre besoin *</label>
+          <textarea id="eizo-need" name="customerNeed" rows="3" required placeholder="Que souhaitez-vous découvrir ou comparer pendant la démonstration ?"></textarea>
 
           <label for="eizo-notes">Notes / Questions</label>
           <textarea id="eizo-notes" name="notes" rows="3" placeholder="Décrivez votre besoin..."></textarea>
@@ -657,16 +658,23 @@
     const btn = this.querySelector('button[type="submit"]');
     const original = btn.textContent; btn.disabled = true; btn.textContent = 'Confirmation...';
     document.getElementById('eizo-error').textContent = '';
+    const customerPhone = document.getElementById('eizo-phone').value.trim();
+    const customerNeed = document.getElementById('eizo-need').value.trim();
+    if (!customerPhone || !customerNeed) {
+      document.getElementById('eizo-error').textContent = 'Le numéro de téléphone et votre besoin sont obligatoires.';
+      btn.disabled = false; btn.textContent = original;
+      return;
+    }
     try {
       await createBooking({
         date: state.selectedDate,
         time: state.selectedTime,
         customerName: `${document.getElementById('eizo-firstName').value.trim()} ${document.getElementById('eizo-lastName').value.trim()}`,
         customerEmail: document.getElementById('eizo-email').value.trim(),
-        customerPhone: document.getElementById('eizo-phone').value.trim() || undefined,
+        customerPhone,
         notes: document.getElementById('eizo-notes').value.trim() || undefined,
         customerUsage: document.getElementById('eizo-usage').value.trim() || undefined,
-        customerNeed: document.getElementById('eizo-need').value.trim() || undefined
+        customerNeed
       });
       this.style.display = 'none';
       document.getElementById('eizo-slots').innerHTML = '';

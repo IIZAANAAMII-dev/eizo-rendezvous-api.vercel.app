@@ -1,5 +1,5 @@
--- Passe l'expert ColorEdge en mode test (emails organisateur -> klegarrec@feeder.fr)
+-- Passe l'expert ColorEdge en production (emails organisateur -> fred@eizo.fr)
 UPDATE organizers
-SET email = 'klegarrec@feeder.fr',
-    notification_email = 'klegarrec@feeder.fr'
+SET email = 'fred@eizo.fr',
+    notification_email = 'fred@eizo.fr'
 WHERE slug = 'coloredge';

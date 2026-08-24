@@ -11,3 +11,5 @@ yarn-error.log*
 .vercel
 tsconfig.tsbuildinfo
 src/media/EIZO-Logo_RGB.avif
+supabase/migrations/022_switch_fred_to_test_email.sql
+supabase/seed_fred.sql

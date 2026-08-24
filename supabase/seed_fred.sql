@@ -25,14 +25,14 @@ INSERT INTO organizers (
 ) VALUES (
   'Fred ROL',
   'coloredge',
-  'klegarrec@feeder.fr',
+  'fred@eizo.fr',
   'ColorEdge',
   'Expert ColorEdge - rendez-vous personnalisés en magasin',
   true,
   60,
   0,
   '{}'::jsonb,
-  'klegarrec@feeder.fr',
+  'fred@eizo.fr',
   '#0066CC',
   'fr-FR',
   'Europe/Paris'

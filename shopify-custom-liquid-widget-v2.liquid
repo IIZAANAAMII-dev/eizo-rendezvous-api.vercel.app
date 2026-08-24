@@ -741,10 +741,23 @@
     console.log('[EIZO Booking] Tracking reset');
   };
 
+  window.eizoOpenBooking = openModal;
+
+  function openFromUrl() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const hash = window.location.hash;
+      if (params.get('rdv') === '1' || hash === '#rdv' || hash === '#rendez-vous' || hash === '#booking') {
+        openModal();
+      }
+    } catch {}
+  }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => maybeShowPrompt(), { once: true });
+    document.addEventListener('DOMContentLoaded', () => { maybeShowPrompt(); openFromUrl(); }, { once: true });
   } else {
     maybeShowPrompt();
+    openFromUrl();
   }
 
   // bfcache

@@ -101,7 +101,7 @@ export default function BookingCalendarPage() {
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
-    const startingDayOfWeek = firstDay.getDay();
+    const startingDayOfWeek = (firstDay.getDay() + 6) % 7;
 
     const days = [];
     for (let i = 0; i < startingDayOfWeek; i++) {
@@ -263,7 +263,7 @@ export default function BookingCalendarPage() {
                 </div>
 
                 <div className="grid grid-cols-7 gap-2 mb-4">
-                  {['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'].map((day) => (
+                  {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((day) => (
                     <div key={day} className="text-center text-sm font-medium text-gray-500">
                       {day}
                     </div>

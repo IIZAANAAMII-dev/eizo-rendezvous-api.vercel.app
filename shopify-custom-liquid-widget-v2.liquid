@@ -34,7 +34,7 @@
   #eizo-booking-widget .eizo-header h2 { margin: 0; font-size: 20px; color: #0B1220; }
   #eizo-booking-widget .eizo-nav { display: flex; gap: 8px; align-items: center; }
   #eizo-booking-widget .eizo-nav button { width: 34px; height: 34px; border: 1px solid #E3E8EF; background: #fff; border-radius: 8px; cursor: pointer; font-size: 16px; }
-  #eizo-booking-widget .eizo-month { font-weight: 700; min-width: 140px; text-align: center; }
+  #eizo-booking-widget .eizo-month { font-weight: 700; min-width: 140px; text-align: center !important; }
   #eizo-booking-widget .eizo-calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-bottom: 24px; }
   #eizo-booking-widget .eizo-day-label { text-align: center; font-size: 12px; font-weight: 700; color: #5E6A7E; padding: 8px 0; }
   #eizo-booking-widget .eizo-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 12px; cursor: pointer; font-size: 14px; background: #F6F8FB; color: #0B1220; border: 1px solid transparent; transition: all .2s; }
@@ -97,14 +97,14 @@
 <div id="eizo-booking-widget">
   <button class="eizo-trigger" id="eizo-trigger" type="button" style="display:none;" aria-hidden="true">📅 Prendre rendez-vous</button>
 
-  <button class="eizo-mini" id="eizo-mini" type="button" aria-label="Choisir une démo">
+  <button class="eizo-mini" id="eizo-mini" type="button" aria-label="Choisir un créneau pour une démo">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <rect x="3" y="4" width="18" height="18" rx="3" ry="3"></rect>
       <line x1="16" y1="2" x2="16" y2="6"></line>
       <line x1="8" y1="2" x2="8" y2="6"></line>
       <line x1="3" y1="10" x2="21" y2="10"></line>
     </svg>
-    <span class="eizo-mini-label">Choisir une démo</span>
+    <span class="eizo-mini-label">Choisir un créneau<br>pour une démo</span>
   </button>
 
   <div class="eizo-prompt" id="eizo-prompt">
@@ -112,7 +112,7 @@
       <button class="eizo-prompt-close" id="eizo-prompt-close" type="button" aria-label="Fermer">×</button>
       <p class="eizo-prompt-kicker">Vous hésitez ?</p>
       <h3 class="eizo-prompt-title">Découvrez le ColorEdge adapté à votre usage</h3>
-      <p class="eizo-prompt-text">Vous comparez nos moniteurs ColorEdge ? C'est normal : chaque usage a ses spécificités. Notre expert EIZO vous accompagne pour identifier le modèle le plus adapté à votre environnement de travail et répondre à vos questions.</p>
+      <p class="eizo-prompt-text">Vous comparez nos moniteurs ColorEdge ? C'est normal : chaque usage a ses spécificités. Nos experts EIZO vous accompagnent pour identifier le modèle le mieux adapté à votre environnement de travail et répondre à toutes vos questions.</p>
       <button class="eizo-prompt-cta" id="eizo-prompt-cta" type="button">Réserver ma démonstration</button>
       <p class="eizo-prompt-small">À Prophot, sans engagement · 1 heure</p>
     </div>
@@ -126,7 +126,7 @@
         </div>
         <div>
           <p class="eizo-name" id="eizo-name">Fred ROL</p>
-          <p class="eizo-specialty" id="eizo-specialty">ColorEdge</p>
+          <p class="eizo-specialty" id="eizo-specialty">Expert Couleur & ColorEdge</p>
         </div>
         <div class="eizo-profile" id="eizo-profile">
           <div class="eizo-profile-section">
@@ -554,7 +554,7 @@
   async function renderCalendar(date) {
     const year = date.getFullYear(), month = date.getMonth();
     const first = new Date(year, month, 1), last = new Date(year, month+1, 0);
-    const daysInMonth = last.getDate(), startOffset = first.getDay();
+    const daysInMonth = last.getDate(), startOffset = (first.getDay() + 6) % 7;
     const today = new Date(); today.setHours(0,0,0,0);
 
     monthEl.textContent = new Date(year, month).toLocaleDateString('fr-FR', { month:'long', year:'numeric' });
@@ -564,7 +564,7 @@
       const monthSlots = await fetchMonth(year, month);
 
       calendarEl.innerHTML = '';
-      ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'].forEach(day => {
+      ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].forEach(day => {
         const el = document.createElement('div'); el.className = 'eizo-day-label'; el.textContent = day; calendarEl.appendChild(el);
       });
       for (let i=0; i<startOffset; i++) { const el=document.createElement('div'); el.className='eizo-day empty'; calendarEl.appendChild(el); }

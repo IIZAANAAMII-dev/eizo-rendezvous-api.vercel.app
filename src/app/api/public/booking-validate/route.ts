@@ -206,7 +206,7 @@ export async function GET(request: NextRequest) {
       `;
 
       return new NextResponse(
-        htmlPage('Rendez-vous accepté', `${commonDetails}<p>Le rendez-vous avec ${booking.customer_name} est confirmé.</p>${actions}${contact}`, true, manageUrl),
+        htmlPage('Rendez-vous accepté', `${commonDetails}<p>Le rendez-vous avec ${booking.customer_name} est confirmé.</p>${actions}${contact}<p style="font-size: 13px; color: #6b7280; margin-top: 20px;"><a href="${manageUrl}" style="color: #0066CC; text-decoration: none;">Gérer le rendez-vous →</a></p>`, true),
         { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
       );
     }

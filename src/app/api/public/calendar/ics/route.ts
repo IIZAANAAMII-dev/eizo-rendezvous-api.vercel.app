@@ -29,6 +29,16 @@ export async function GET(request: NextRequest) {
       return withCors(NextResponse.json({ error: 'Rendez-vous introuvable' }, { status: 404 }), request);
     }
 
+    const { data: organizer } = await supabase
+      .from('organizers')
+      .select('slug, venue_name, venue_location, booth')
+      .eq('id', booking.organizer_id)
+      .single();
+    const isIbc = organizer?.slug === 'ibc-2026';
+    const language = booking.requested_product?.language === 'en' ? 'en' : 'fr';
+    const location = isIbc
+      ? `${organizer?.venue_name || 'RAI Amsterdam'}, ${organizer?.venue_location || 'Amsterdam, the Netherlands'}, ${language === 'en' ? 'Booth' : 'Stand'} ${organizer?.booth || '7.D33'}`
+      : siteConfig.showroom.fullAddress;
     const requestedProduct = booking.requested_product?.title || booking.product_title || 'ColorEdge';
     const startTime = booking.start_time.slice(0, 5);
     const endTime = booking.end_time ? booking.end_time.slice(0, 5) : startTime;
@@ -37,7 +47,7 @@ export async function GET(request: NextRequest) {
     let description: string;
 
     if (role === 'expert') {
-      title = `Démonstration EIZO ColorEdge — ${booking.customer_name}`;
+      title = isIbc ? `EIZO at IBC 2026 — ${booking.customer_name}` : `Démonstration EIZO ColorEdge — ${booking.customer_name}`;
       description = [
         `Client : ${booking.customer_name}`,
         `Téléphone : ${booking.customer_phone || ''}`,
@@ -45,14 +55,14 @@ export async function GET(request: NextRequest) {
         `Démonstration : ${requestedProduct}`,
         booking.customer_usage && `Utilisation : ${booking.customer_usage}`,
         booking.customer_notes && `Message : ${booking.customer_notes}`,
-        `Lieu : ${siteConfig.showroom.fullAddress}`,
+        `${language === 'en' ? 'Location' : 'Lieu'} : ${location}`,
       ].filter(Boolean).join('\n');
     } else {
-      title = `Démonstration EIZO ColorEdge — ${siteConfig.showroom.name}`;
+      title = isIbc ? 'EIZO at IBC 2026' : `Démonstration EIZO ColorEdge — ${siteConfig.showroom.name}`;
       description = [
         `Démonstration : ${requestedProduct}`,
         booking.customer_usage && `Utilisation : ${booking.customer_usage}`,
-        `Lieu : ${siteConfig.showroom.fullAddress}`,
+        `${language === 'en' ? 'Location' : 'Lieu'} : ${location}`,
         siteConfig.showroom.googleMapsUrl,
       ].filter(Boolean).join('\n');
     }
@@ -63,7 +73,7 @@ export async function GET(request: NextRequest) {
       startTime,
       endDate: booking.date,
       endTime,
-      location: siteConfig.showroom.fullAddress,
+      location,
       description,
       uid: booking.management_token || booking.id,
     });
@@ -72,7 +82,7 @@ export async function GET(request: NextRequest) {
       status: 200,
       headers: {
         'Content-Type': 'text/calendar; charset=utf-8',
-        'Content-Disposition': 'attachment; filename="eizo-coloredge.ics"',
+        'Content-Disposition': `attachment; filename="${isIbc ? 'eizo-ibc-2026' : 'eizo-coloredge'}.ics"`,
       },
     });
   } catch (error) {

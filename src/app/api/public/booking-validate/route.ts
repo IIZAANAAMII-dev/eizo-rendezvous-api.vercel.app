@@ -69,7 +69,7 @@ function htmlPage(title: string, content: string, success = true, redirectUrl = 
 function ibcHtmlPage(title: string, message: string, details: string, success: boolean, language: 'fr' | 'en') {
   const color = success ? '#10B981' : '#0066CC';
   return `<!DOCTYPE html><html lang="${language}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style>
-    *{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px;background:radial-gradient(circle at top right,#dbeafe 0,#f8fafc 42%,#eef2f7 100%);color:#0f172a}.card{width:100%;max-width:620px;background:rgba(255,255,255,.96);border-radius:28px;overflow:hidden;box-shadow:0 28px 80px rgba(15,23,42,.16);animation:enter .6s cubic-bezier(.22,1,.36,1)}.head{padding:28px 34px;border-bottom:1px solid #e8edf3}.head img{display:block;width:120px;height:auto}.body{padding:38px 34px}.kicker{margin:0 0 10px;color:#0066cc;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}h1{margin:0 0 16px;font-size:28px;line-height:1.2}p{color:#64748b;line-height:1.65}.icon{display:flex;width:72px;height:72px;margin-bottom:24px;align-items:center;justify-content:center;border-radius:22px;background:${color}14;color:${color};font-size:32px;font-weight:800}.details{margin:26px 0 0;padding:22px;border-radius:18px;background:#f8fafc}.details p{margin:7px 0;color:#334155}.details span{color:#64748b}.venue{margin-top:18px;padding:18px;border-radius:16px;background:#0066cc;color:white;font-size:14px;line-height:1.6}@keyframes enter{from{opacity:0;transform:translateY(24px) scale(.96)}to{opacity:1;transform:none}}@media(prefers-reduced-motion:reduce){.card{animation:none}}
+    *{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px;background:radial-gradient(circle at top right,#dbeafe 0,#f8fafc 42%,#eef2f7 100%);color:#0f172a}.card{width:100%;max-width:620px;background:rgba(255,255,255,.96);border-radius:28px;overflow:hidden;box-shadow:0 28px 80px rgba(15,23,42,.16);animation:enter .6s cubic-bezier(.22,1,.36,1)}.head{padding:28px 34px;border-bottom:1px solid #e8edf3}.head img{display:block;width:120px;height:auto}.body{padding:38px 34px}.kicker{margin:0 0 10px;color:#0066cc;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}h1{margin:0 0 16px;font-size:28px;line-height:1.2}p{color:#64748b;line-height:1.65}.icon{display:flex;width:72px;height:72px;margin-bottom:24px;align-items:center;justify-content:center;border-radius:22px;background:${color}14;color:${color};font-size:32px;font-weight:800}.details{margin:26px 0 0;padding:22px;border-radius:18px;background:#f8fafc}.details p{margin:7px 0;color:#334155}.details span{color:#64748b}.venue{margin-top:18px;padding:18px;border-radius:16px;background:#0066cc;color:white;font-size:14px;line-height:1.6}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}.btn{display:inline-flex;padding:13px 18px;border-radius:10px;text-decoration:none;font-size:14px;font-weight:700}.btn-primary{background:#0066cc;color:#fff}.btn-outline{background:#eef2f6;color:#064b8e}@keyframes enter{from{opacity:0;transform:translateY(24px) scale(.96)}to{opacity:1;transform:none}}@media(prefers-reduced-motion:reduce){.card{animation:none}}
   </style></head><body><main class="card"><div class="head"><img src="https://eizo.fr/cdn/shop/files/EIZO-Logo_RGB.png?v=1732704479&amp;width=310" alt="EIZO"></div><div class="body"><div class="icon">${success ? '✓' : '×'}</div><p class="kicker">IBC 2026 · September 11–14</p><h1>${title}</h1><p>${message}</p>${details}<div class="venue"><strong>RAI Amsterdam</strong><br>Amsterdam, the Netherlands · ${language === 'en' ? 'Booth' : 'Stand'} 7.D33</div></div></main></body></html>`;
 }
 
@@ -154,19 +154,21 @@ export async function GET(request: NextRequest) {
         return withCors(NextResponse.json({ error: 'Failed to confirm booking' }, { status: 500 }), request);
       }
 
+      const calendarTitle = isIbc ? `EIZO at IBC 2026 — ${booking.customer_name}` : `Démonstration EIZO ColorEdge — ${booking.customer_name}`;
+      const calendarLocation = isIbc ? 'RAI Amsterdam, Amsterdam, the Netherlands, Booth 7.D33' : siteConfig.showroom.fullAddress;
       const googleUrl = buildGoogleCalendarUrl({
-        title: `Démonstration EIZO ColorEdge — ${booking.customer_name}`,
+        title: calendarTitle,
         startDate: booking.date,
         startTime: booking.start_time.slice(0, 5),
         endDate: booking.date,
         endTime: booking.end_time.slice(0, 5),
-        location: siteConfig.showroom.fullAddress,
+        location: calendarLocation,
         description: [
           `Client : ${booking.customer_name}`,
           `Téléphone : ${booking.customer_phone || ''}`,
           `Email : ${booking.customer_email}`,
           booking.requested_product?.title && `Démonstration : ${booking.requested_product.title}`,
-          `Lieu : ${siteConfig.showroom.fullAddress}`,
+          `${language === 'en' ? 'Location' : 'Lieu'} : ${calendarLocation}`,
         ].filter(Boolean).join('\n'),
       });
 
@@ -176,7 +178,7 @@ export async function GET(request: NextRequest) {
 
       const startIso = `${booking.date}T${booking.start_time.slice(0, 5)}`;
       const endIso = `${booking.date}T${booking.end_time.slice(0, 5)}`;
-      const outlookUrl = `https://outlook.office.com/calendar/0/deeplink/compose?subject=${encodeURIComponent(`Démonstration EIZO ColorEdge — ${booking.customer_name}`)}&startdt=${encodeURIComponent(startIso)}&enddt=${encodeURIComponent(endIso)}&body=${encodeURIComponent(`Client : ${booking.customer_name}\nTéléphone : ${booking.customer_phone || ''}\nEmail : ${booking.customer_email}\nLieu : ${siteConfig.showroom.fullAddress}`)}&location=${encodeURIComponent(siteConfig.showroom.fullAddress)}`;
+      const outlookUrl = `https://outlook.office.com/calendar/0/deeplink/compose?subject=${encodeURIComponent(calendarTitle)}&startdt=${encodeURIComponent(startIso)}&enddt=${encodeURIComponent(endIso)}&body=${encodeURIComponent(`Client : ${booking.customer_name}\nTéléphone : ${booking.customer_phone || ''}\nEmail : ${booking.customer_email}\n${language === 'en' ? 'Location' : 'Lieu'} : ${calendarLocation}`)}&location=${encodeURIComponent(calendarLocation)}`;
 
       try {
         await sendBookingConfirmedEmail({
@@ -206,9 +208,9 @@ export async function GET(request: NextRequest) {
 
       const actions = `
         <div class="actions">
-          <a href="${googleUrl}" target="_blank" class="btn btn-primary">Ajouter à Google Agenda</a>
-          ${outlookUrl ? `<a href="${outlookUrl}" target="_blank" class="btn btn-outline">Ajouter à Outlook</a>` : ''}
-          ${icsUrl ? `<a href="${icsUrl}" class="btn btn-outline">Télécharger .ics</a>` : ''}
+          <a href="${googleUrl}" target="_blank" class="btn btn-primary">${language === 'en' ? 'Add to Google Calendar' : 'Ajouter à Google Agenda'}</a>
+          ${outlookUrl ? `<a href="${outlookUrl}" target="_blank" class="btn btn-outline">${language === 'en' ? 'Add to Outlook' : 'Ajouter à Outlook'}</a>` : ''}
+          ${icsUrl ? `<a href="${icsUrl}" class="btn btn-outline">${language === 'en' ? 'Download .ics' : 'Télécharger .ics'}</a>` : ''}
         </div>
         ${manageUrl ? `<p style="margin-top: 16px; font-size: 13px; color: #6b7280;"><a href="${manageUrl}">Gérer le rendez-vous</a></p>` : ''}
       `;
@@ -226,7 +228,7 @@ export async function GET(request: NextRequest) {
         ? `The IBC 2026 appointment with ${booking.customer_name} is confirmed. The customer has been notified.`
         : `Le rendez-vous IBC 2026 avec ${booking.customer_name} est confirmé. Le client a été informé.`;
       return new NextResponse(
-        isIbc ? ibcHtmlPage(acceptedTitle, acceptedMessage, commonDetails, true, language) : htmlPage('Rendez-vous accepté', `${commonDetails}<p>Le rendez-vous avec ${booking.customer_name} est confirmé.</p>${actions}${contact}<p style="font-size: 13px; color: #6b7280; margin-top: 20px;"><a href="${manageUrl}" style="color: #0066CC; text-decoration: none;">Gérer le rendez-vous →</a></p>`, true),
+        isIbc ? ibcHtmlPage(acceptedTitle, acceptedMessage, `${commonDetails}${actions}`, true, language) : htmlPage('Rendez-vous accepté', `${commonDetails}<p>Le rendez-vous avec ${booking.customer_name} est confirmé.</p>${actions}${contact}<p style="font-size: 13px; color: #6b7280; margin-top: 20px;"><a href="${manageUrl}" style="color: #0066CC; text-decoration: none;">Gérer le rendez-vous →</a></p>`, true),
         { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
       );
     }

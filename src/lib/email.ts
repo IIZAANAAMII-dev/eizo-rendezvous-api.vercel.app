@@ -339,11 +339,17 @@ function buildIbcEmail(data: BookingEmailData, kind: IbcEmailKind): string {
     'organizer-cancelled': { title: 'Rendez-vous IBC 2026 annulé', intro: `${escapeHtml(data.customerName)} a annulé son rendez-vous.`, status: 'Ce créneau est de nouveau disponible.' },
   };
   const message = messages[kind];
-  const actions = kind === 'organizer' && data.confirmationUrl && data.declineUrl ? `
-    <div style="margin:28px 0 8px;text-align:center;">
-      <a href="${escapeHtml(data.confirmationUrl)}" style="display:inline-block;margin:4px;background:#0066CC;color:#fff;padding:13px 22px;border-radius:9px;text-decoration:none;font-weight:700;">${en ? 'Accept' : 'Accepter'}</a>
-      <a href="${escapeHtml(data.declineUrl)}" style="display:inline-block;margin:4px;background:#eef2f6;color:#344054;padding:13px 22px;border-radius:9px;text-decoration:none;font-weight:700;">${en ? 'Decline' : 'Refuser'}</a>
-    </div>` : '';
+  let actions = '';
+  if (kind === 'organizer' && data.confirmationUrl && data.declineUrl) {
+    actions = `<div style="margin:28px 0 8px;text-align:center;"><a href="${escapeHtml(data.confirmationUrl)}" style="display:inline-block;margin:4px;background:#0066CC;color:#fff;padding:13px 22px;border-radius:9px;text-decoration:none;font-weight:700;">${en ? 'Accept' : 'Accepter'}</a><a href="${escapeHtml(data.declineUrl)}" style="display:inline-block;margin:4px;background:#eef2f6;color:#344054;padding:13px 22px;border-radius:9px;text-decoration:none;font-weight:700;">${en ? 'Decline' : 'Refuser'}</a></div>`;
+  }
+  if (kind === 'confirmed' && data.managementToken) {
+    const location = `${data.venueName || 'RAI Amsterdam'}, ${data.venueLocation || 'Amsterdam, the Netherlands'}, ${en ? 'Booth' : 'Stand'} ${data.booth || '7.D33'}`;
+    const googleUrl = buildGoogleCalendarUrl({ title: `EIZO at IBC 2026 — ${data.customerName}`, startDate: data.date, startTime: data.time, endDate: data.date, endTime: data.endTime || data.time, location, description: `${en ? 'Appointment with the EIZO team at IBC 2026' : 'Rendez-vous avec l’équipe EIZO à IBC 2026'}\n${location}` });
+    const icsUrl = `${siteConfig.appUrl}/api/public/calendar/ics?token=${data.managementToken}&role=client`;
+    const manageUrl = `${siteConfig.appUrl}/manage/${data.managementToken}`;
+    actions = `<div style="margin:28px 0 8px;text-align:center;"><a href="${googleUrl}" style="display:inline-block;margin:4px;background:#0066CC;color:#fff;padding:13px 22px;border-radius:9px;text-decoration:none;font-weight:700;">${en ? 'Add to Google Calendar' : 'Ajouter à Google Agenda'}</a><a href="${icsUrl}" style="display:inline-block;margin:4px;background:#eef2f6;color:#064b8e;padding:13px 22px;border-radius:9px;text-decoration:none;font-weight:700;">${en ? 'Add to Outlook (.ics)' : 'Ajouter à Outlook (.ics)'}</a></div><p style="text-align:center;margin:18px 0 0;"><a href="${manageUrl}" style="color:#0066CC;font-weight:700;text-decoration:none;">${en ? 'Change or cancel my appointment' : 'Modifier ou annuler mon rendez-vous'}</a></p>`;
+  }
 
   return `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f2f5f9;padding:40px 16px;">
     <div style="max-width:620px;margin:0 auto;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 12px 40px rgba(15,23,42,.08);">

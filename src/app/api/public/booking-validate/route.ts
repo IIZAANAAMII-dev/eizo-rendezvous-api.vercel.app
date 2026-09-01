@@ -66,6 +66,13 @@ function htmlPage(title: string, content: string, success = true, redirectUrl = 
 </html>`;
 }
 
+function ibcHtmlPage(title: string, message: string, details: string, success: boolean, language: 'fr' | 'en') {
+  const color = success ? '#10B981' : '#0066CC';
+  return `<!DOCTYPE html><html lang="${language}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style>
+    *{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px;background:radial-gradient(circle at top right,#dbeafe 0,#f8fafc 42%,#eef2f7 100%);color:#0f172a}.card{width:100%;max-width:620px;background:rgba(255,255,255,.96);border-radius:28px;overflow:hidden;box-shadow:0 28px 80px rgba(15,23,42,.16);animation:enter .6s cubic-bezier(.22,1,.36,1)}.head{padding:28px 34px;border-bottom:1px solid #e8edf3}.head img{display:block;width:120px;height:auto}.body{padding:38px 34px}.kicker{margin:0 0 10px;color:#0066cc;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}h1{margin:0 0 16px;font-size:28px;line-height:1.2}p{color:#64748b;line-height:1.65}.icon{display:flex;width:72px;height:72px;margin-bottom:24px;align-items:center;justify-content:center;border-radius:22px;background:${color}14;color:${color};font-size:32px;font-weight:800}.details{margin:26px 0 0;padding:22px;border-radius:18px;background:#f8fafc}.details p{margin:7px 0;color:#334155}.details span{color:#64748b}.venue{margin-top:18px;padding:18px;border-radius:16px;background:#0066cc;color:white;font-size:14px;line-height:1.6}@keyframes enter{from{opacity:0;transform:translateY(24px) scale(.96)}to{opacity:1;transform:none}}@media(prefers-reduced-motion:reduce){.card{animation:none}}
+  </style></head><body><main class="card"><div class="head"><img src="https://eizo.fr/cdn/shop/files/EIZO-Logo_RGB.png?v=1732704479&amp;width=310" alt="EIZO"></div><div class="body"><div class="icon">${success ? '✓' : '×'}</div><p class="kicker">IBC 2026 · September 11–14</p><h1>${title}</h1><p>${message}</p>${details}<div class="venue"><strong>RAI Amsterdam</strong><br>Amsterdam, the Netherlands · ${language === 'en' ? 'Booth' : 'Stand'} 7.D33</div></div></main></body></html>`;
+}
+
 export async function GET(request: NextRequest) {
   const preflight = handleCors(request);
   if (preflight) return preflight;
@@ -98,16 +105,20 @@ export async function GET(request: NextRequest) {
       .eq('id', booking.organizer_id)
       .single();
 
-    const dateLabel = formatDate(booking.date);
+    const isIbc = organizer?.slug === 'ibc-2026';
+    const language: 'fr' | 'en' = booking.requested_product?.language === 'en' ? 'en' : 'fr';
+    const dateLabel = isIbc
+      ? new Date(`${booking.date}T12:00:00`).toLocaleDateString(language === 'en' ? 'en-GB' : 'fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+      : formatDate(booking.date);
     const timeLabel = formatTime(booking.start_time);
     const endTimeLabel = formatTime(booking.end_time);
 
     const commonDetails = `
       <div class="details">
-        <p><span>Client :</span> ${booking.customer_name}</p>
+        <p><span>${language === 'en' ? 'Customer' : 'Client'} :</span> ${booking.customer_name}</p>
         <p><span>Date :</span> ${dateLabel}</p>
-        <p><span>Heure :</span> ${timeLabel} - ${endTimeLabel}</p>
-        <p><span>Expert :</span> ${organizer?.name || 'Expert EIZO'}</p>
+        <p><span>${language === 'en' ? 'Time' : 'Heure'} :</span> ${timeLabel} - ${endTimeLabel}</p>
+        <p><span>${language === 'en' ? 'Team' : 'Équipe'} :</span> ${organizer?.name || 'EIZO'}</p>
       </div>
     `;
 
@@ -210,8 +221,12 @@ export async function GET(request: NextRequest) {
         </div>
       `;
 
+      const acceptedTitle = language === 'en' ? 'Appointment confirmed' : 'Rendez-vous confirmé';
+      const acceptedMessage = language === 'en'
+        ? `The IBC 2026 appointment with ${booking.customer_name} is confirmed. The customer has been notified.`
+        : `Le rendez-vous IBC 2026 avec ${booking.customer_name} est confirmé. Le client a été informé.`;
       return new NextResponse(
-        htmlPage('Rendez-vous accepté', `${commonDetails}<p>Le rendez-vous avec ${booking.customer_name} est confirmé.</p>${actions}${contact}<p style="font-size: 13px; color: #6b7280; margin-top: 20px;"><a href="${manageUrl}" style="color: #0066CC; text-decoration: none;">Gérer le rendez-vous →</a></p>`, true),
+        isIbc ? ibcHtmlPage(acceptedTitle, acceptedMessage, commonDetails, true, language) : htmlPage('Rendez-vous accepté', `${commonDetails}<p>Le rendez-vous avec ${booking.customer_name} est confirmé.</p>${actions}${contact}<p style="font-size: 13px; color: #6b7280; margin-top: 20px;"><a href="${manageUrl}" style="color: #0066CC; text-decoration: none;">Gérer le rendez-vous →</a></p>`, true),
         { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
       );
     }
@@ -273,8 +288,12 @@ export async function GET(request: NextRequest) {
         </div>
       `;
 
+      const declinedTitle = language === 'en' ? 'Request declined' : 'Demande refusée';
+      const declinedMessage = language === 'en'
+        ? `The appointment request from ${booking.customer_name} has been declined. The customer has been notified by email.`
+        : `La demande de rendez-vous de ${booking.customer_name} a été refusée. Le client a été informé par email.`;
       return new NextResponse(
-        htmlPage('Rendez-vous refusé', `${commonDetails}<p>La demande de ${booking.customer_name} pour le ${dateLabel} de ${timeLabel} à ${endTimeLabel} a été refusée.</p><p>Le client a été informé et peut choisir un autre créneau.</p>${contact}`, false, manageUrl),
+        isIbc ? ibcHtmlPage(declinedTitle, declinedMessage, commonDetails, false, language) : htmlPage('Rendez-vous refusé', `${commonDetails}<p>La demande de ${booking.customer_name} pour le ${dateLabel} de ${timeLabel} à ${endTimeLabel} a été refusée.</p><p>Le client a été informé et peut choisir un autre créneau.</p>${contact}`, false, manageUrl),
         { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
       );
     }
@@ -324,8 +343,12 @@ export async function GET(request: NextRequest) {
         console.error('[validate booking] cancel customer email error:', emailError);
       }
 
+      const cancelledTitle = language === 'en' ? 'Appointment cancelled' : 'Rendez-vous annulé';
+      const cancelledMessage = language === 'en'
+        ? 'The IBC 2026 appointment has been cancelled and the customer has been notified.'
+        : 'Le rendez-vous IBC 2026 a bien été annulé et le client a été informé.';
       return new NextResponse(
-        htmlPage('Rendez-vous annulé', `${commonDetails}<p>Le rendez-vous a bien été annulé. Le client en a été informé.</p>`, true, manageUrl),
+        isIbc ? ibcHtmlPage(cancelledTitle, cancelledMessage, commonDetails, true, language) : htmlPage('Rendez-vous annulé', `${commonDetails}<p>Le rendez-vous a bien été annulé. Le client en a été informé.</p>`, true, manageUrl),
         { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
       );
     }

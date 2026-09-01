@@ -16,7 +16,7 @@ interface Booking {
   start_time: string;
   end_time: string;
   status: string;
-  requested_product?: { title?: string } | null;
+  requested_product?: { title?: string; language?: 'fr' | 'en' } | null;
   customer_usage?: string | null;
   customer_need?: string | null;
   customer_notes?: string | null;
@@ -26,6 +26,9 @@ interface Booking {
 interface Organizer {
   name: string;
   slug: string;
+  venue_name?: string;
+  venue_location?: string;
+  booth?: string;
 }
 
 export default function ManageBookingPage() {
@@ -81,7 +84,7 @@ export default function ManageBookingPage() {
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('fr-FR', {
+    return new Date(`${date}T12:00:00`).toLocaleDateString(booking?.requested_product?.language === 'en' ? 'en-GB' : 'fr-FR', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -92,7 +95,7 @@ export default function ManageBookingPage() {
   const formatTime = (time: string) => time.slice(0, 5);
 
   const handleCancel = async () => {
-    if (!confirm('Êtes-vous sûr de vouloir annuler ce rendez-vous ?')) return;
+    if (!confirm(isEnglish ? 'Are you sure you want to cancel this appointment?' : 'Êtes-vous sûr de vouloir annuler ce rendez-vous ?')) return;
     setIsSubmitting(true);
     try {
       const response = await fetch(`/api/public/manage/${token}`, {
@@ -102,11 +105,15 @@ export default function ManageBookingPage() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Erreur');
-      setMessage('Votre rendez-vous a été annulé. Vous allez être redirigé pour prendre un autre créneau.');
+      setMessage(isIbc
+        ? (isEnglish ? 'Your IBC 2026 appointment has been cancelled.' : 'Votre rendez-vous IBC 2026 a bien été annulé.')
+        : 'Votre rendez-vous a été annulé. Vous allez être redirigé pour prendre un autre créneau.');
       setBooking(prev => prev ? { ...prev, status: 'cancelled' } : null);
-      setTimeout(() => {
-        window.location.href = `${siteConfig.appUrl}/booking/${organizer?.slug || 'coloredge'}`;
-      }, 2000);
+      if (!isIbc) {
+        setTimeout(() => {
+          window.location.href = `${siteConfig.appUrl}/booking/${organizer?.slug || 'coloredge'}`;
+        }, 2000);
+      }
     } catch (err: any) {
       setMessage(err.message || 'Erreur lors de l\'annulation.');
     } finally {
@@ -156,12 +163,14 @@ export default function ManageBookingPage() {
   if (!booking) return null;
 
   const isActive = ['pending', 'confirmed'].includes(booking.status);
-  const demo = booking.requested_product?.title || booking.customer_need || 'ColorEdge';
+  const isIbc = organizer?.slug === 'ibc-2026';
+  const isEnglish = isIbc && booking.requested_product?.language === 'en';
+  const demo = isIbc ? 'IBC 2026' : booking.requested_product?.title || booking.customer_need || 'ColorEdge';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white py-12 px-6">
       <div className="max-w-2xl mx-auto space-y-8">
-        <h1 className="text-3xl font-bold text-gray-900 text-center">Votre rendez-vous EIZO ColorEdge</h1>
+        <h1 className="text-3xl font-bold text-gray-900 text-center">{isIbc ? (isEnglish ? 'Your EIZO appointment at IBC 2026' : 'Votre rendez-vous EIZO à IBC 2026') : 'Votre rendez-vous EIZO ColorEdge'}</h1>
 
         <Card>
           <CardContent className="p-6 space-y-4">
@@ -182,11 +191,17 @@ export default function ManageBookingPage() {
             <div className="flex items-start gap-3">
               <MapPin className="w-5 h-5 text-[#0066cc] mt-1" />
               <div>
-                <p className="text-sm text-gray-500">Lieu</p>
-                <p className="font-medium text-gray-900">{siteConfig.showroom.name}</p>
-                <p className="text-sm text-gray-600">{siteConfig.showroom.address.street}</p>
-                <p className="text-sm text-gray-600">{siteConfig.showroom.address.postalCode} {siteConfig.showroom.address.city}</p>
-                <a href={siteConfig.showroom.googleMapsUrl} target="_blank" className="text-sm text-[#0066cc] hover:underline">Voir sur Google Maps</a>
+                <p className="text-sm text-gray-500">{isEnglish ? 'Location' : 'Lieu'}</p>
+                <p className="font-medium text-gray-900">{isIbc ? organizer?.venue_name || 'RAI Amsterdam' : siteConfig.showroom.name}</p>
+                {isIbc ? (
+                  <p className="text-sm text-gray-600">{organizer?.venue_location || 'Amsterdam, the Netherlands'} · {isEnglish ? 'Booth' : 'Stand'} {organizer?.booth || '7.D33'}</p>
+                ) : (
+                  <>
+                    <p className="text-sm text-gray-600">{siteConfig.showroom.address.street}</p>
+                    <p className="text-sm text-gray-600">{siteConfig.showroom.address.postalCode} {siteConfig.showroom.address.city}</p>
+                    <a href={siteConfig.showroom.googleMapsUrl} target="_blank" className="text-sm text-[#0066cc] hover:underline">Voir sur Google Maps</a>
+                  </>
+                )}
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -196,7 +211,7 @@ export default function ManageBookingPage() {
                 <p className="font-medium text-gray-900">{demo}</p>
               </div>
             </div>
-            {siteConfig.contact.phone && (
+            {!isIbc && siteConfig.contact.phone && (
               <div className="flex items-start gap-3">
                 <Phone className="w-5 h-5 text-[#0066cc] mt-1" />
                 <div>
@@ -263,13 +278,13 @@ export default function ManageBookingPage() {
         {isActive && (
           <Card>
             <CardContent className="p-6 space-y-4">
-              <h2 className="text-xl font-semibold text-gray-900">Annuler le rendez-vous</h2>
+              <h2 className="text-xl font-semibold text-gray-900">{isEnglish ? 'Cancel appointment' : 'Annuler le rendez-vous'}</h2>
               <Button
                 onClick={handleCancel}
                 disabled={isSubmitting}
                 className="w-full bg-red-600 hover:bg-red-700 text-white"
               >
-                {isSubmitting ? 'Annulation...' : 'Annuler mon rendez-vous'}
+                {isSubmitting ? (isEnglish ? 'Cancelling...' : 'Annulation...') : (isEnglish ? 'Cancel my appointment' : 'Annuler mon rendez-vous')}
               </Button>
             </CardContent>
           </Card>

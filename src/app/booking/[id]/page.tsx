@@ -279,11 +279,11 @@ export default function BookingCalendarPage() {
             </div>
           </div>
         ) : (
-        <div className={`grid grid-cols-1 gap-5 ${isIbc ? 'md:grid-cols-[280px_minmax(0,1fr)]' : 'lg:grid-cols-3 lg:gap-8'}`}>
+        <div className={`grid grid-cols-1 gap-5 ${isIbc ? 'gap-6 md:grid-cols-[320px_minmax(0,1fr)]' : 'lg:grid-cols-3 lg:gap-8'}`}>
           <div className={isIbc ? '' : 'lg:col-span-1'}>
             <Card className={isIbc ? '!border-0 bg-transparent shadow-none' : 'sticky top-6'}>
-              <CardContent className={isIbc ? 'space-y-3 p-0' : 'p-6'}>
-                <div className={isIbc ? 'mb-0 flex items-center gap-4 rounded-3xl bg-gradient-to-br from-[#071c36] via-[#0b315c] to-[#0066cc] p-5 text-white shadow-[0_20px_45px_-22px_rgba(0,66,130,0.75)]' : 'mb-6 flex items-center gap-4'}>
+              <CardContent className={isIbc ? 'space-y-4 p-0' : 'p-6'}>
+                <div className={isIbc ? 'mb-0 flex items-center gap-4 rounded-3xl bg-gradient-to-br from-[#071c36] via-[#0b315c] to-[#0066cc] p-6 text-white shadow-[0_20px_45px_-22px_rgba(0,66,130,0.75)]' : 'mb-6 flex items-center gap-4'}>
                   {isIbc ? (
                     <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-white to-slate-50 p-3 shadow-[0_10px_30px_-12px_rgba(15,23,42,0.35)] ring-1 ring-slate-200/70">
                       <img
@@ -304,27 +304,27 @@ export default function BookingCalendarPage() {
                     <p className={`text-sm ${isIbc ? 'text-blue-100' : 'text-gray-600'}`}>{organizer.specialty || 'Expert EIZO'}</p>
                   </div>
                 </div>
-                <div className={isIbc ? 'grid grid-cols-2 gap-3' : 'space-y-3'}>
-                  <div className={isIbc ? 'flex min-h-24 flex-col justify-between rounded-2xl bg-white p-4 text-sm text-slate-600 shadow-sm' : 'flex items-center gap-2 text-sm text-gray-600'}>
+                <div className={isIbc ? 'grid grid-cols-1 gap-3' : 'space-y-3'}>
+                  <div className={isIbc ? 'flex items-center gap-3 rounded-2xl bg-white p-5 text-sm text-slate-600 shadow-sm' : 'flex items-center gap-2 text-sm text-gray-600'}>
                     <Clock className="w-4 h-4" />
                     <span>{organizer.slot_duration_minutes === 60 ? (isEnglish ? '1-hour appointment' : '1 heure de rendez-vous') : `${organizer.slot_duration_minutes || 60} min${isEnglish ? ' appointment' : ' de rendez-vous'}`}</span>
                   </div>
-                  <div className={isIbc ? 'flex min-h-24 flex-col justify-between rounded-2xl bg-[#ddecff] p-4 text-sm text-[#064b8e]' : 'flex items-center gap-2 text-sm text-gray-600'}>
+                  <div className={isIbc ? 'flex items-center gap-3 rounded-2xl bg-[#ddecff] p-5 text-sm font-medium text-[#064b8e]' : 'flex items-center gap-2 text-sm text-gray-600'}>
                     <MapPin className="w-4 h-4" />
                     <span>{organizer.venue_name || (isIbc ? 'RAI Amsterdam' : siteConfig.showroom.name)}</span>
                   </div>
-                  <div className={isIbc ? 'col-span-2 flex items-center gap-3 rounded-2xl bg-white p-4 text-sm text-slate-600 shadow-sm' : 'flex items-center gap-2 text-sm text-gray-600'}>
+                  <div className={isIbc ? 'flex items-center gap-3 rounded-2xl bg-white p-5 text-sm text-slate-600 shadow-sm' : 'flex items-center gap-2 text-sm text-gray-600'}>
                     <Calendar className="w-4 h-4" />
                     <span>{eventDates || 'En présentiel'}</span>
                   </div>
                   {(organizer.venue_location || isIbc) && (
-                    <div className={isIbc ? 'col-span-2 rounded-2xl bg-[#0066cc] p-4 text-sm font-medium text-white shadow-[0_14px_30px_-18px_rgba(0,102,204,0.8)]' : 'text-sm text-gray-600'}>
+                    <div className={isIbc ? 'rounded-2xl bg-[#0066cc] p-5 text-sm font-medium leading-6 text-white shadow-[0_14px_30px_-18px_rgba(0,102,204,0.8)]' : 'text-sm text-gray-600'}>
                       {organizer.venue_location || 'Amsterdam, the Netherlands'} · {isEnglish ? 'Booth' : 'Stand'} {organizer.booth || '7.D33'}
                     </div>
                   )}
                 </div>
                 {isEvent && exhibits.length > 0 && (
-                  <div className={isIbc ? 'rounded-3xl bg-white p-5 shadow-sm' : 'mt-6 border-t border-gray-200 pt-5'}>
+                  <div className={isIbc ? 'rounded-3xl bg-white p-6 shadow-sm' : 'mt-6 border-t border-gray-200 pt-5'}>
                     <h3 className="mb-3 text-sm font-semibold text-gray-900">{isEnglish ? 'Products on display' : 'Produits présentés'}</h3>
                     <ul className="space-y-2 text-sm text-gray-600">
                       {exhibits.map((exhibit) => <li key={exhibit}>• {exhibit}</li>)}

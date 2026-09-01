@@ -35,7 +35,7 @@ export async function GET(
 
     const { data: organizer } = await supabase
       .from('organizers')
-      .select('name, slug, email, notification_email, slot_duration_minutes')
+      .select('name, slug, email, notification_email, slot_duration_minutes, venue_name, venue_location, booth')
       .eq('id', booking.organizer_id)
       .single();
 

@@ -119,7 +119,7 @@ export async function PATCH(
         customerNeed: booking.customer_need,
         managementToken: booking.management_token,
         organizerSlug: organizer.slug,
-        language: booking.booking_language === 'en' ? 'en' as const : 'fr' as const,
+        language: booking.requested_product?.language === 'en' ? 'en' as const : 'fr' as const,
         venueName: organizer.venue_name,
         venueLocation: organizer.venue_location,
         booth: organizer.booth,

@@ -1,8 +1,5 @@
 BEGIN;
 
-ALTER TABLE bookings
-  ADD COLUMN IF NOT EXISTS booking_language TEXT NOT NULL DEFAULT 'fr';
-
 ALTER TABLE organizers
   ADD COLUMN IF NOT EXISTS event_start_date DATE,
   ADD COLUMN IF NOT EXISTS event_end_date DATE,
@@ -29,7 +26,7 @@ BEGIN
       'IBC 2026',
       'HDR Reference Monitor|Color Management Monitors|Color Management Software Solutions|OLED Color Management Monitor',
       true,
-      41,
+      45,
       0,
       '{}'::jsonb,
       'klegarrec@feeder.fr',
@@ -50,7 +47,7 @@ BEGIN
       specialty = 'IBC 2026',
       description = 'HDR Reference Monitor|Color Management Monitors|Color Management Software Solutions|OLED Color Management Monitor',
       active = true,
-      slot_duration_minutes = 41,
+      slot_duration_minutes = 45,
       buffer_minutes = 0,
       notification_email = 'klegarrec@feeder.fr',
       brand_color = '#0066CC',
@@ -80,13 +77,13 @@ BEGIN
     RETURNING id, day_of_week
   )
   INSERT INTO availability_slots (availability_id, start_time, end_time)
-  SELECT inserted.id, slot_start::time, (slot_start + interval '41 minutes')::time
+  SELECT inserted.id, slot_start::time, (slot_start + interval '45 minutes')::time
   FROM inserted
   JOIN schedules USING (day_of_week)
   CROSS JOIN LATERAL generate_series(
     date '2000-01-01' + schedules.starts,
-    date '2000-01-01' + schedules.closes - interval '41 minutes',
-    interval '41 minutes'
+    date '2000-01-01' + schedules.closes - interval '45 minutes',
+    interval '45 minutes'
   ) AS slot_start;
 END $$;
 

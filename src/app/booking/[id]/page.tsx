@@ -247,7 +247,7 @@ export default function BookingCalendarPage() {
   const exhibits = organizer.description?.split('|').filter(Boolean) || [];
 
   return (
-    <div className={isIbc ? 'min-h-screen bg-[#f4f7fb]' : 'min-h-screen bg-gradient-to-br from-blue-50 to-white'}>
+    <div className={isIbc ? 'min-h-screen bg-[radial-gradient(circle_at_top_right,_#dbeafe_0,_#f8fafc_38%,_#f1f5f9_100%)]' : 'min-h-screen bg-gradient-to-br from-blue-50 to-white'}>
       <div className={`mx-auto max-w-6xl ${isIbc ? 'px-4 py-5' : 'px-6 py-12'}`}>
         {!isIbc && (
           <Button
@@ -281,11 +281,11 @@ export default function BookingCalendarPage() {
         ) : (
         <div className={`grid grid-cols-1 gap-5 ${isIbc ? 'md:grid-cols-[280px_minmax(0,1fr)]' : 'lg:grid-cols-3 lg:gap-8'}`}>
           <div className={isIbc ? '' : 'lg:col-span-1'}>
-            <Card className={isIbc ? 'overflow-hidden border-0 shadow-xl shadow-slate-200/70' : 'sticky top-6'}>
-              <CardContent className="p-6">
-                <div className="flex items-center gap-4 mb-6">
+            <Card className={isIbc ? '!border-0 bg-transparent shadow-none' : 'sticky top-6'}>
+              <CardContent className={isIbc ? 'space-y-3 p-0' : 'p-6'}>
+                <div className={isIbc ? 'mb-0 flex items-center gap-4 rounded-3xl bg-gradient-to-br from-[#071c36] via-[#0b315c] to-[#0066cc] p-5 text-white shadow-[0_20px_45px_-22px_rgba(0,66,130,0.75)]' : 'mb-6 flex items-center gap-4'}>
                   {isIbc ? (
-                    <div className="flex h-24 w-24 items-center justify-center rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-white to-slate-50 p-3 shadow-[0_10px_30px_-12px_rgba(15,23,42,0.35)] ring-1 ring-slate-200/70">
                       <img
                         src="https://eizo.fr/cdn/shop/files/EIZO-Logo_RGB.png?v=1732704479&width=310"
                         alt="EIZO"
@@ -300,31 +300,31 @@ export default function BookingCalendarPage() {
                     />
                   )}
                   <div>
-                    <h2 className="text-xl font-semibold text-gray-900">{organizer.name === 'Fred ROL' ? 'Notre expert EIZO' : organizer.name}</h2>
-                    <p className="text-sm text-gray-600">{organizer.specialty || 'Expert EIZO'}</p>
+                    <h2 className={`text-xl font-semibold ${isIbc ? 'text-white' : 'text-gray-900'}`}>{organizer.name === 'Fred ROL' ? 'Notre expert EIZO' : organizer.name}</h2>
+                    <p className={`text-sm ${isIbc ? 'text-blue-100' : 'text-gray-600'}`}>{organizer.specialty || 'Expert EIZO'}</p>
                   </div>
                 </div>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                <div className={isIbc ? 'grid grid-cols-2 gap-3' : 'space-y-3'}>
+                  <div className={isIbc ? 'flex min-h-24 flex-col justify-between rounded-2xl bg-white p-4 text-sm text-slate-600 shadow-sm' : 'flex items-center gap-2 text-sm text-gray-600'}>
                     <Clock className="w-4 h-4" />
                     <span>{organizer.slot_duration_minutes === 60 ? (isEnglish ? '1-hour appointment' : '1 heure de rendez-vous') : `${organizer.slot_duration_minutes || 60} min${isEnglish ? ' appointment' : ' de rendez-vous'}`}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <div className={isIbc ? 'flex min-h-24 flex-col justify-between rounded-2xl bg-[#ddecff] p-4 text-sm text-[#064b8e]' : 'flex items-center gap-2 text-sm text-gray-600'}>
                     <MapPin className="w-4 h-4" />
                     <span>{organizer.venue_name || (isIbc ? 'RAI Amsterdam' : siteConfig.showroom.name)}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <div className={isIbc ? 'col-span-2 flex items-center gap-3 rounded-2xl bg-white p-4 text-sm text-slate-600 shadow-sm' : 'flex items-center gap-2 text-sm text-gray-600'}>
                     <Calendar className="w-4 h-4" />
                     <span>{eventDates || 'En présentiel'}</span>
                   </div>
                   {(organizer.venue_location || isIbc) && (
-                    <div className="text-sm text-gray-600">
-                      {organizer.venue_location || 'Amsterdam, the Netherlands'} · Stand {organizer.booth || '7.D33'}
+                    <div className={isIbc ? 'col-span-2 rounded-2xl bg-[#0066cc] p-4 text-sm font-medium text-white shadow-[0_14px_30px_-18px_rgba(0,102,204,0.8)]' : 'text-sm text-gray-600'}>
+                      {organizer.venue_location || 'Amsterdam, the Netherlands'} · {isEnglish ? 'Booth' : 'Stand'} {organizer.booth || '7.D33'}
                     </div>
                   )}
                 </div>
                 {isEvent && exhibits.length > 0 && (
-                  <div className="mt-6 border-t border-gray-200 pt-5">
+                  <div className={isIbc ? 'rounded-3xl bg-white p-5 shadow-sm' : 'mt-6 border-t border-gray-200 pt-5'}>
                     <h3 className="mb-3 text-sm font-semibold text-gray-900">{isEnglish ? 'Products on display' : 'Produits présentés'}</h3>
                     <ul className="space-y-2 text-sm text-gray-600">
                       {exhibits.map((exhibit) => <li key={exhibit}>• {exhibit}</li>)}
@@ -336,7 +336,7 @@ export default function BookingCalendarPage() {
           </div>
 
           <div className={isIbc ? 'min-w-0 space-y-5' : 'lg:col-span-2 space-y-6'}>
-            <Card>
+            <Card className={isIbc ? 'rounded-3xl !border-0 bg-white/95 shadow-[0_20px_55px_-24px_rgba(15,23,42,0.28)] backdrop-blur' : ''} style={isIbc ? { border: 'none' } : undefined}>
               <CardContent className="p-6">
                 {isIbc ? (
                   <div>
@@ -358,10 +358,10 @@ export default function BookingCalendarPage() {
                             disabled={!hasAvailable}
                             className={`group rounded-2xl border p-5 text-left transition-all duration-300 ${
                               isSelected
-                                ? 'border-[#0066cc] bg-[#0066cc] text-white shadow-lg shadow-blue-200'
+                                ? 'border-transparent bg-gradient-to-br from-[#0074d9] to-[#0053a6] text-white shadow-[0_16px_30px_-12px_rgba(0,102,204,0.65)] ring-1 ring-blue-400/20'
                                 : hasAvailable
-                                ? 'border-gray-200 bg-white hover:-translate-y-1 hover:border-[#0066cc] hover:shadow-xl hover:shadow-blue-100'
-                                : 'cursor-not-allowed border-gray-100 bg-gray-50 text-gray-400'
+                                ? 'border-slate-200/80 bg-white hover:-translate-y-1.5 hover:border-blue-300 hover:shadow-[0_16px_30px_-16px_rgba(0,102,204,0.45)]'
+                                : 'cursor-not-allowed border-slate-100 bg-slate-50/70 text-slate-400'
                             }`}
                           >
                             <span className={`block text-xs font-bold uppercase tracking-wider ${isSelected ? 'text-blue-100' : 'text-[#0066cc]'}`}>
@@ -439,8 +439,8 @@ export default function BookingCalendarPage() {
             </Card>
 
             {selectedDate && availableDays.length > 0 && (
-              <Card>
-                <CardContent className="p-6">
+              <Card className={isIbc ? 'rounded-3xl !border-0 bg-white/95 shadow-[0_20px_55px_-24px_rgba(15,23,42,0.28)] backdrop-blur' : ''} style={isIbc ? { border: 'none' } : undefined}>
+                <CardContent className={isIbc ? 'p-7' : 'p-6'}>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">
                     {isEnglish ? 'Available times' : 'Créneaux disponibles'} - {selectedDate?.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}
                   </h3>
@@ -450,12 +450,12 @@ export default function BookingCalendarPage() {
                         key={index}
                         onClick={() => slot.available && handleTimeClick(slot.time)}
                         disabled={!slot.available}
-                        className={`p-3 rounded-lg border-2 transition-all text-sm ${
+                        className={`rounded-xl px-3 py-3.5 text-sm font-medium transition-all duration-200 ${
                           selectedTime === slot.time
-                            ? 'border-[#0066cc] bg-blue-50 text-[#0066cc]'
+                            ? 'bg-[#0066cc] text-white shadow-lg shadow-blue-200'
                             : slot.available
-                            ? 'border-gray-200 hover:border-[#0066cc] text-gray-700'
-                            : 'border-gray-100 text-gray-300 cursor-not-allowed'
+                            ? 'bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-200 hover:-translate-y-0.5 hover:bg-white hover:text-[#0066cc] hover:ring-blue-300 hover:shadow-md'
+                            : 'cursor-not-allowed bg-slate-50 text-slate-300 ring-1 ring-inset ring-slate-100'
                         }`}
                       >
                         {formatSlot(slot)}

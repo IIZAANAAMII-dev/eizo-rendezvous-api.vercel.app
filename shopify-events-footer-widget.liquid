@@ -2,7 +2,7 @@
   #eizo-events-widget { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
   #eizo-events-widget .eizo-events-backdrop { display: none; position: fixed; inset: 0; z-index: 10020; align-items: center; justify-content: center; padding: 16px; background: rgba(11,18,32,.55); backdrop-filter: blur(5px); }
   #eizo-events-widget .eizo-events-backdrop.active { display: flex; animation: eizo-events-fade-in .28s ease-out both; }
-  #eizo-events-widget .eizo-events-modal { position: relative; width: min(900px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; border-radius: 20px; background: #fff; box-shadow: 0 25px 70px rgba(0,0,0,.24); transform-origin: 50% 55%; }
+  #eizo-events-widget .eizo-events-modal { position: relative; width: min(1120px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; border-radius: 20px; background: #fff; box-shadow: 0 25px 70px rgba(0,0,0,.24); transform-origin: 50% 55%; }
   #eizo-events-widget .eizo-events-backdrop.active .eizo-events-modal { animation: eizo-events-bounce-in .55s cubic-bezier(.22,1,.36,1) both; }
   #eizo-events-widget .eizo-events-logo { display: block; width: 126px; height: auto; margin: 0 0 30px; }
   @keyframes eizo-events-fade-in { from { opacity: 0; } to { opacity: 1; } }
@@ -42,7 +42,7 @@
   #eizo-events-widget .eizo-events-calendar { display: none; height: min(820px, calc(100dvh - 32px)); }
   #eizo-events-widget .eizo-events-calendar.active { display: flex; flex-direction: column; animation: eizo-events-calendar-in .48s cubic-bezier(.22,1,.36,1) both; }
   @keyframes eizo-events-calendar-in { from { opacity: 0; transform: translateX(24px) scale(.985); } to { opacity: 1; transform: translateX(0) scale(1); } }
-  #eizo-events-widget .eizo-events-toolbar { display: flex; align-items: center; min-height: 68px; padding: 12px 72px 12px 20px; border-bottom: 1px solid #e6eaf0; }
+  #eizo-events-widget .eizo-events-toolbar { display: flex; align-items: center; min-height: 68px; padding: 12px 72px 12px 28px; border-bottom: 1px solid rgba(226,232,240,.85); background: rgba(255,255,255,.92); backdrop-filter: blur(14px); }
   #eizo-events-widget .eizo-events-back { border: 0; background: transparent; color: #0066cc; font-size: 14px; font-weight: 700; cursor: pointer; }
   #eizo-events-widget .eizo-events-frame { width: 100%; flex: 1; border: 0; background: #f8fafc; }
   @media (max-width: 680px) {

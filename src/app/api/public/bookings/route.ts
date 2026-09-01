@@ -19,6 +19,7 @@ interface RequestedProduct {
   title?: string;
   handle?: string;
   url?: string;
+  language?: 'fr' | 'en';
 }
 
 function sanitizeString(value: unknown, maxLength = 2000): string | null {
@@ -124,6 +125,10 @@ export async function POST(request: NextRequest) {
       return withCors(NextResponse.json({ error: 'Failed to fetch organizer' }, { status: 500 }), request);
     }
 
+    const bookingRequestedProduct: RequestedProduct | null = organizer.slug === 'ibc-2026'
+      ? { ...(requestedProduct || {}), language }
+      : requestedProduct;
+
     if (
       (organizer.event_start_date && date < organizer.event_start_date) ||
       (organizer.event_end_date && date > organizer.event_end_date)
@@ -174,14 +179,13 @@ export async function POST(request: NextRequest) {
         product_handle: productHandle,
         product_id: productId,
         shop_domain: shopDomain,
-        requested_product: requestedProduct,
+        requested_product: bookingRequestedProduct,
         products_viewed: productsViewed,
         customer_need: customerNeed,
         customer_usage: customerUsage,
         status: 'pending',
         confirmation_token: confirmationToken,
         management_token: managementToken,
-        booking_language: language,
       })
       .select()
       .single();
@@ -205,7 +209,7 @@ export async function POST(request: NextRequest) {
         productHandle: productHandle || undefined,
         shopDomain: shopDomain || undefined,
         notes: notes || undefined,
-        requestedProduct,
+        requestedProduct: bookingRequestedProduct,
         productsViewed,
         customerNeed,
         customerUsage,

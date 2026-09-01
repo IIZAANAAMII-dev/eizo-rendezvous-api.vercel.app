@@ -201,6 +201,11 @@ export async function PATCH(
           customerNeed: updated.customer_need,
           notes: updated.customer_notes || undefined,
           managementToken: updated.management_token,
+          organizerSlug: organizer.slug,
+          language: updated.requested_product?.language === 'en' ? 'en' as const : 'fr' as const,
+          venueName: organizer.venue_name,
+          venueLocation: organizer.venue_location,
+          booth: organizer.booth,
         };
 
         const acceptUrl = `${siteConfig.appUrl}/api/public/booking-validate?token=${updated.confirmation_token}&action=accept`;

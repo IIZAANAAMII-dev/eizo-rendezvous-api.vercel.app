@@ -56,6 +56,7 @@ export default function BookingCalendarPage() {
 
   const cardsRef = useRef<HTMLDivElement[]>([]);
   const successRef = useRef<HTMLDivElement>(null);
+  const bentoAnimatedRef = useRef(false);
 
   useEffect(() => {
     if (!bookingSuccess || !successRef.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -120,12 +121,13 @@ export default function BookingCalendarPage() {
   }, [monthSlots, params.id, selectedDate]);
 
   useEffect(() => {
-    if (params.id !== 'ibc-2026' || availableDays.length === 0 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (params.id !== 'ibc-2026' || availableDays.length === 0 || bentoAnimatedRef.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    bentoAnimatedRef.current = true;
     const context = gsap.context(() => {
       gsap.fromTo('.ibc-bento-card', { opacity: 0, y: 28, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.78, stagger: 0.18, ease: 'power3.out' });
     });
     return () => { context.revert(); };
-  }, [availableDays, params.id]);
+  }, [availableDays.length, params.id]);
 
   const getInitials = (name: string) => {
     return name
@@ -337,6 +339,18 @@ export default function BookingCalendarPage() {
                       </a>
                     )}
                   </div>
+                  {isIbc && (
+                    <div className="ibc-bento-card flex items-center justify-between rounded-2xl bg-gradient-to-r from-[#075da8] to-[#0074d9] p-5 text-white shadow-[0_14px_30px_-18px_rgba(0,102,204,0.8)]">
+                      <div>
+                        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-blue-100">Hall</p>
+                        <p className="mt-1 text-lg font-bold">7</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-blue-100">{isEnglish ? 'Booth' : 'Stand'}</p>
+                        <p className="mt-1 text-lg font-bold">D33</p>
+                      </div>
+                    </div>
+                  )}
                   <div className={isIbc ? 'ibc-bento-card flex items-center gap-3 rounded-2xl bg-white p-5 text-sm text-slate-600 shadow-sm' : 'flex items-center gap-2 text-sm text-gray-600'}>
                     <Calendar className="w-4 h-4" />
                     <span>{eventDates || 'En présentiel'}</span>

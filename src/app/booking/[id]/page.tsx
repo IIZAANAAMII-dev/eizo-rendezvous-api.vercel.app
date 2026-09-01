@@ -108,6 +108,17 @@ export default function BookingCalendarPage() {
     }
   }, [currentMonth, params.id]);
 
+  useEffect(() => {
+    if (params.id !== 'ibc-2026' || selectedDate || Object.keys(monthSlots).length === 0) return;
+    const firstAvailableDate = [11, 12, 13, 14]
+      .map(day => new Date(2026, 8, day))
+      .find(date => (monthSlots[formatLocalDate(date)] || []).some(slot => slot.available));
+    if (firstAvailableDate) {
+      setSelectedDate(firstAvailableDate);
+      fetchAvailableSlots(firstAvailableDate);
+    }
+  }, [monthSlots, params.id, selectedDate]);
+
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -322,9 +333,9 @@ export default function BookingCalendarPage() {
                     <Calendar className="w-4 h-4" />
                     <span>{eventDates || 'En présentiel'}</span>
                   </div>
-                  {(organizer.venue_location || isIbc) && (
-                    <div className={isIbc ? 'rounded-2xl bg-[#0066cc] p-5 text-sm font-medium leading-6 text-white shadow-[0_14px_30px_-18px_rgba(0,102,204,0.8)]' : 'text-sm text-gray-600'}>
-                      {organizer.venue_location || 'Amsterdam, the Netherlands'} · {isEnglish ? 'Booth' : 'Stand'} {organizer.booth || '7.D33'}
+                  {!isIbc && organizer.venue_location && (
+                    <div className="text-sm text-gray-600">
+                      {organizer.venue_location}{organizer.booth ? ` · Stand ${organizer.booth}` : ''}
                     </div>
                   )}
                 </div>
@@ -442,34 +453,6 @@ export default function BookingCalendarPage() {
                 )}
               </CardContent>
             </Card>
-
-            {isIbc && !selectedDate && (
-              <Card className="min-h-[330px] flex-1 rounded-3xl !border-0 bg-gradient-to-br from-[#071c36] via-[#0b315c] to-[#0066cc] text-white shadow-[0_24px_60px_-28px_rgba(0,66,130,0.75)]" style={{ border: 'none' }}>
-                <CardContent className="flex h-full flex-col justify-between p-8">
-                  <div>
-                    <p className="mb-3 text-xs font-bold uppercase tracking-[0.16em] text-blue-200">{isEnglish ? 'Plan your visit' : 'Préparez votre visite'}</p>
-                    <h3 className="max-w-lg text-2xl font-semibold leading-tight">{isEnglish ? 'Select one of the four event days to view available appointments.' : 'Sélectionnez l’une des quatre journées pour afficher les rendez-vous disponibles.'}</h3>
-                  </div>
-                  <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div className="rounded-2xl bg-white/10 p-5 ring-1 ring-white/15">
-                      <p className="text-sm font-semibold">{isEnglish ? 'Friday' : 'Vendredi'}</p>
-                      <p className="mt-1 text-sm text-blue-100">10:30 – 17:30</p>
-                    </div>
-                    <div className="rounded-2xl bg-white/10 p-5 ring-1 ring-white/15">
-                      <p className="text-sm font-semibold">{isEnglish ? 'Saturday & Sunday' : 'Samedi & dimanche'}</p>
-                      <p className="mt-1 text-sm text-blue-100">10:00 – 17:30</p>
-                    </div>
-                    <div className="rounded-2xl bg-white/10 p-5 ring-1 ring-white/15">
-                      <p className="text-sm font-semibold">{isEnglish ? 'Monday' : 'Lundi'}</p>
-                      <p className="mt-1 text-sm text-blue-100">10:00 – 16:00</p>
-                    </div>
-                    <a href="https://www.google.com/maps/search/?api=1&query=RAI%20Amsterdam%2C%20Amsterdam%2C%20the%20Netherlands" target="_blank" rel="noreferrer" className="flex items-center justify-between rounded-2xl bg-white p-5 text-sm font-bold text-[#064b8e] transition-transform hover:-translate-y-0.5">
-                      <span>RAI Amsterdam</span><span>Google Maps ↗</span>
-                    </a>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
 
             {selectedDate && availableDays.length > 0 && (
               <Card className={isIbc ? 'flex-1 rounded-3xl !border-0 bg-white/95 shadow-[0_20px_55px_-24px_rgba(15,23,42,0.28)] backdrop-blur' : ''} style={isIbc ? { border: 'none' } : undefined}>

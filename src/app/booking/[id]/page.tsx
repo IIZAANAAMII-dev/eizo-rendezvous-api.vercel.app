@@ -119,6 +119,18 @@ export default function BookingCalendarPage() {
     }
   }, [monthSlots, params.id, selectedDate]);
 
+  useEffect(() => {
+    if (params.id !== 'ibc-2026' || Object.keys(monthSlots).length === 0 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const animation = gsap.fromTo('.ibc-day-card', { opacity: 0, y: 20, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.65, stagger: 0.14, ease: 'power3.out' });
+    return () => animation.kill();
+  }, [monthSlots, params.id]);
+
+  useEffect(() => {
+    if (params.id !== 'ibc-2026' || availableDays.length === 0 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const animation = gsap.fromTo('.ibc-slot-card', { opacity: 0, y: 14, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.55, stagger: 0.08, ease: 'power2.out' });
+    return () => animation.kill();
+  }, [availableDays, params.id]);
+
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -372,7 +384,7 @@ export default function BookingCalendarPage() {
                             type="button"
                             onClick={() => hasAvailable && handleDateClick(date)}
                             disabled={!hasAvailable}
-                            className={`group rounded-2xl border p-5 text-left transition-all duration-300 ${
+                            className={`ibc-day-card group rounded-2xl border p-5 text-left transition-all duration-300 ${
                               isSelected
                                 ? 'border-transparent bg-gradient-to-br from-[#0074d9] to-[#0053a6] text-white shadow-[0_16px_30px_-12px_rgba(0,102,204,0.65)] ring-1 ring-blue-400/20'
                                 : hasAvailable
@@ -466,7 +478,7 @@ export default function BookingCalendarPage() {
                         key={index}
                         onClick={() => slot.available && handleTimeClick(slot.time)}
                         disabled={!slot.available}
-                        className={`rounded-xl px-3 py-3.5 text-sm font-medium transition-all duration-200 ${
+                        className={`ibc-slot-card rounded-xl px-3 py-3.5 text-sm font-medium transition-all duration-200 ${
                           selectedTime === slot.time
                             ? 'bg-[#0066cc] text-white shadow-lg shadow-blue-200'
                             : slot.available

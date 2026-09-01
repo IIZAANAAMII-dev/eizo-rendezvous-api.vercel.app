@@ -58,6 +58,7 @@
   #eizo-events-widget .eizo-events-loader-line:nth-child(2) { width: 72%; }
   #eizo-events-widget .eizo-events-loader-line:nth-child(3) { width: 48%; }
   @keyframes eizo-events-shimmer { from { background-position: 200% 0; } to { background-position: -20% 0; } }
+  #eizo-events-widget .eizo-events-fallback { display: none; margin-top: 18px; color: #0066cc; font-size: 14px; font-weight: 700; text-decoration: underline; }
   @media (max-width: 680px) {
     #eizo-events-widget .eizo-events-backdrop { padding: 0; }
     #eizo-events-widget .eizo-events-modal { width: 100%; height: 100dvh; max-height: none; border-radius: 0; }
@@ -118,6 +119,7 @@
             <img class="eizo-events-loader-logo" src="https://eizo.fr/cdn/shop/files/EIZO-Logo_RGB.png?v=1732704479&amp;width=310" alt="EIZO">
             <div class="eizo-events-loader-line"></div>
             <div class="eizo-events-loader-line"></div>
+            <a id="eizo-events-fallback" class="eizo-events-fallback" href="#" target="_blank" rel="noopener noreferrer">Ouvrir le calendrier dans un nouvel onglet</a>
           </div>
         </div>
         <iframe
@@ -141,9 +143,11 @@
   const frame = document.getElementById('eizo-events-frame');
   const loader = document.getElementById('eizo-events-loader');
   const closeButton = document.getElementById('eizo-events-close');
+  const fallbackLink = document.getElementById('eizo-events-fallback');
   const siteLanguage = (document.documentElement.lang || navigator.language || 'fr').toLowerCase();
   const isEnglish = siteLanguage.startsWith('en');
   let previousFocus = null;
+  let loadTimeout = null;
 
   function applyLanguage() {
     if (!isEnglish) return;
@@ -156,6 +160,7 @@
     document.querySelector('.eizo-event-badge').textContent = 'Details coming soon';
     document.getElementById('eizo-events-back').textContent = '← Choose another event';
     closeButton.setAttribute('aria-label', 'Close');
+    fallbackLink.textContent = 'Open calendar in a new tab';
   }
 
   function openEvents() {
@@ -181,10 +186,21 @@
   }
 
   function openIbcCalendar() {
+    const calendarUrl = `${frame.dataset.src}?lang=${isEnglish ? 'en' : 'fr'}`;
     picker.style.display = 'none';
     calendar.classList.add('active');
-    if (!frame.classList.contains('loaded')) loader.classList.remove('hidden');
-    if (!frame.src) frame.src = `${frame.dataset.src}?lang=${isEnglish ? 'en' : 'fr'}`;
+    fallbackLink.href = calendarUrl;
+    if (!frame.classList.contains('loaded')) {
+      loader.classList.remove('hidden');
+      fallbackLink.style.display = 'none';
+      document.querySelectorAll('.eizo-events-loader-line').forEach(function (line) { line.style.display = ''; });
+      clearTimeout(loadTimeout);
+      loadTimeout = setTimeout(function () {
+        document.querySelectorAll('.eizo-events-loader-line').forEach(function (line) { line.style.display = 'none'; });
+        fallbackLink.style.display = 'block';
+      }, 7000);
+    }
+    if (frame.src !== calendarUrl) frame.src = calendarUrl;
     document.getElementById('eizo-events-back').focus();
   }
 
@@ -202,8 +218,10 @@
   });
 
   frame.addEventListener('load', function () {
+    clearTimeout(loadTimeout);
     frame.classList.add('loaded');
     loader.classList.add('hidden');
+    fallbackLink.style.display = 'none';
   });
   closeButton.addEventListener('click', closeEvents);
   document.getElementById('eizo-event-ibc').addEventListener('click', openIbcCalendar);

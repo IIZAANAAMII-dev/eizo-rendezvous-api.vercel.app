@@ -123,6 +123,13 @@ export async function POST(request: NextRequest) {
       return withCors(NextResponse.json({ error: 'Failed to fetch organizer' }, { status: 500 }), request);
     }
 
+    if (
+      (organizer.event_start_date && date < organizer.event_start_date) ||
+      (organizer.event_end_date && date > organizer.event_end_date)
+    ) {
+      return withCors(NextResponse.json({ error: 'Cette date n’est pas disponible pour cet événement.' }, { status: 400 }), request);
+    }
+
     const { data: existingBooking, error: checkError } = await supabase
       .from('bookings')
       .select('id')

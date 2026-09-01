@@ -18,6 +18,12 @@ interface Organizer {
   avatar_url?: string;
   slot_duration_minutes?: number;
   working_days?: Record<string, { start: string; end: string }[]>;
+  description?: string;
+  event_start_date?: string;
+  event_end_date?: string;
+  venue_name?: string;
+  venue_location?: string;
+  booth?: string;
 }
 
 interface TimeSlot {
@@ -57,6 +63,10 @@ export default function BookingCalendarPage() {
       const response = await fetch(`/api/public/organizers/${params.id}`);
       const data = await response.json();
       setOrganizer(data);
+      if (data.event_start_date) {
+        const [year, month] = data.event_start_date.split('-').map(Number);
+        setCurrentMonth(new Date(year, month - 1, 1));
+      }
       setLoading(false);
     } catch (error) {
       console.error('Failed to fetch organizer:', error);
@@ -197,6 +207,15 @@ export default function BookingCalendarPage() {
 
   const days = getDaysInMonth(currentMonth);
   const monthName = currentMonth.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  const isIbc = params.id === 'ibc-2026';
+  const isEvent = isIbc || Boolean(organizer.event_start_date && organizer.event_end_date);
+  const eventStartDate = organizer.event_start_date || (isIbc ? '2026-09-11' : undefined);
+  const eventEndDate = organizer.event_end_date || (isIbc ? '2026-09-14' : undefined);
+  const eventDates = eventStartDate && eventEndDate
+    ? `${new Date(`${eventStartDate}T12:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })} – ${new Date(`${eventEndDate}T12:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`
+    : null;
+  const eventDays = isIbc ? [11, 12, 13, 14].map(day => new Date(2026, 8, day)) : [];
+  const exhibits = organizer.description?.split('|').filter(Boolean) || [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
@@ -215,11 +234,21 @@ export default function BookingCalendarPage() {
             <Card className="sticky top-6">
               <CardContent className="p-6">
                 <div className="flex items-center gap-4 mb-6">
-                  <Avatar
-                    src={organizer.avatar_url}
-                    initials={getInitials(organizer.name)}
-                    size="xl"
-                  />
+                  {isIbc ? (
+                    <div className="flex h-24 w-24 items-center justify-center rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                      <img
+                        src="https://eizo.fr/cdn/shop/files/EIZO-Logo_RGB.png?v=1732704479&width=310"
+                        alt="EIZO"
+                        className="h-auto w-full"
+                      />
+                    </div>
+                  ) : (
+                    <Avatar
+                      src={organizer.avatar_url}
+                      initials={getInitials(organizer.name)}
+                      size="xl"
+                    />
+                  )}
                   <div>
                     <h2 className="text-xl font-semibold text-gray-900">{organizer.name === 'Fred ROL' ? 'Notre expert EIZO' : organizer.name}</h2>
                     <p className="text-sm text-gray-600">{organizer.specialty || 'Expert EIZO'}</p>
@@ -232,13 +261,26 @@ export default function BookingCalendarPage() {
                   </div>
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <MapPin className="w-4 h-4" />
-                    <span>{siteConfig.showroom.name}</span>
+                    <span>{organizer.venue_name || (isIbc ? 'RAI Amsterdam' : siteConfig.showroom.name)}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Calendar className="w-4 h-4" />
-                    <span>En présentiel</span>
+                    <span>{eventDates || 'En présentiel'}</span>
                   </div>
+                  {(organizer.venue_location || isIbc) && (
+                    <div className="text-sm text-gray-600">
+                      {organizer.venue_location || 'Amsterdam, the Netherlands'} · Stand {organizer.booth || '7.D33'}
+                    </div>
+                  )}
                 </div>
+                {isEvent && exhibits.length > 0 && (
+                  <div className="mt-6 border-t border-gray-200 pt-5">
+                    <h3 className="mb-3 text-sm font-semibold text-gray-900">Produits présentés</h3>
+                    <ul className="space-y-2 text-sm text-gray-600">
+                      {exhibits.map((exhibit) => <li key={exhibit}>• {exhibit}</li>)}
+                    </ul>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -246,6 +288,44 @@ export default function BookingCalendarPage() {
           <div className="lg:col-span-2 space-y-6">
             <Card>
               <CardContent className="p-6">
+                {isIbc ? (
+                  <div>
+                    <div className="mb-6">
+                      <p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-[#0066cc]">IBC 2026</p>
+                      <h3 className="text-2xl font-semibold text-gray-900">Choisissez votre journée</h3>
+                      <p className="mt-2 text-sm text-gray-500">Uniquement du 11 au 14 septembre 2026</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                      {eventDays.map((date) => {
+                        const dateStr = date.toISOString().split('T')[0];
+                        const hasAvailable = (monthSlots[dateStr] || []).some(slot => slot.available);
+                        const isSelected = selectedDate?.toDateString() === date.toDateString();
+                        return (
+                          <button
+                            key={dateStr}
+                            type="button"
+                            onClick={() => hasAvailable && handleDateClick(date)}
+                            disabled={!hasAvailable}
+                            className={`group rounded-2xl border p-5 text-left transition-all duration-300 ${
+                              isSelected
+                                ? 'border-[#0066cc] bg-[#0066cc] text-white shadow-lg shadow-blue-200'
+                                : hasAvailable
+                                ? 'border-gray-200 bg-white hover:-translate-y-1 hover:border-[#0066cc] hover:shadow-xl hover:shadow-blue-100'
+                                : 'cursor-not-allowed border-gray-100 bg-gray-50 text-gray-400'
+                            }`}
+                          >
+                            <span className={`block text-xs font-bold uppercase tracking-wider ${isSelected ? 'text-blue-100' : 'text-[#0066cc]'}`}>
+                              {date.toLocaleDateString('fr-FR', { weekday: 'long' })}
+                            </span>
+                            <span className="mt-3 block text-3xl font-bold">{date.getDate()}</span>
+                            <span className={`mt-1 block text-sm ${isSelected ? 'text-blue-100' : 'text-gray-500'}`}>septembre</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <>
                 <div className="flex items-center justify-between mb-6">
                   <button
                     onClick={previousMonth}
@@ -303,6 +383,8 @@ export default function BookingCalendarPage() {
                     );
                   })}
                 </div>
+                  </>
+                )}
               </CardContent>
             </Card>
 

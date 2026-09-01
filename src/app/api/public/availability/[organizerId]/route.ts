@@ -41,6 +41,10 @@ export async function GET(
       return withCors(NextResponse.json({ error: 'Failed to fetch organizer' }, { status: 500 }), request);
     }
 
+    const isOutsideEventDates = (value: string) =>
+      (organizer.event_start_date && value < organizer.event_start_date) ||
+      (organizer.event_end_date && value > organizer.event_end_date);
+
     // Préparation des working_days pour chaque jour de la semaine
     const { data: availabilities, error: availabilityError } = await supabase
       .from('availability')
@@ -124,13 +128,19 @@ export async function GET(
       for (let d = 1; d <= lastDay.getDate(); d++) {
         const ds = `${y}-${pad(m)}-${pad(d)}`;
         const bookedStartTimes = bookingsByDate[ds] || [];
-        dates[ds] = generateSlotsForDate(ds, enrichedOrganizer, bookedStartTimes, unavailableDates);
+        dates[ds] = isOutsideEventDates(ds)
+          ? []
+          : generateSlotsForDate(ds, enrichedOrganizer, bookedStartTimes, unavailableDates);
       }
 
       return withCors(NextResponse.json({ dates, month, workingDays: Object.keys(workingDays) }), request);
     }
 
     // Sinon, un seul jour
+    if (isOutsideEventDates(date!)) {
+      return withCors(NextResponse.json({ slots: [] }), request);
+    }
+
     const dayOfWeek = new Date(date!).getDay();
     const daySlots = workingDays[dayOfWeek] || [];
 

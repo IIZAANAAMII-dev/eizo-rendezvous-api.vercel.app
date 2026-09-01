@@ -42,6 +42,11 @@ export async function GET(
       notification_email: data.notification_email,
       brand_color: data.brand_color,
       locale: data.locale,
+      event_start_date: data.event_start_date,
+      event_end_date: data.event_end_date,
+      venue_name: data.venue_name,
+      venue_location: data.venue_location,
+      booth: data.booth,
     }), request);
   } catch (error) {
     console.error('[public organizer]', error);

@@ -1,0 +1,168 @@
+<style>
+  #eizo-events-widget { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  #eizo-events-widget .eizo-events-backdrop { display: none; position: fixed; inset: 0; z-index: 10020; align-items: center; justify-content: center; padding: 16px; background: rgba(11,18,32,.55); backdrop-filter: blur(5px); }
+  #eizo-events-widget .eizo-events-backdrop.active { display: flex; animation: eizo-events-fade-in .28s ease-out both; }
+  #eizo-events-widget .eizo-events-modal { position: relative; width: min(900px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; border-radius: 20px; background: #fff; box-shadow: 0 25px 70px rgba(0,0,0,.24); transform-origin: 50% 55%; }
+  #eizo-events-widget .eizo-events-backdrop.active .eizo-events-modal { animation: eizo-events-bounce-in .55s cubic-bezier(.22,1,.36,1) both; }
+  #eizo-events-widget .eizo-events-logo { display: block; width: 126px; height: auto; margin: 0 0 30px; }
+  @keyframes eizo-events-fade-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes eizo-events-bounce-in {
+    0% { opacity: 0; transform: translateY(28px) scale(.9); }
+    62% { opacity: 1; transform: translateY(-5px) scale(1.015); }
+    82% { transform: translateY(2px) scale(.995); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  #eizo-events-widget .eizo-events-close { position: absolute; top: 18px; right: 18px; z-index: 2; width: 42px; height: 42px; border: 0; border-radius: 50%; background: #f1f4f8; color: #344054; font-size: 26px; line-height: 1; cursor: pointer; }
+  #eizo-events-widget .eizo-events-close:hover { background: #0066cc; color: #fff; }
+  #eizo-events-widget .eizo-events-picker { padding: 48px; }
+  #eizo-events-widget .eizo-events-backdrop.active .eizo-events-logo,
+  #eizo-events-widget .eizo-events-backdrop.active .eizo-events-kicker,
+  #eizo-events-widget .eizo-events-backdrop.active .eizo-events-title,
+  #eizo-events-widget .eizo-events-backdrop.active .eizo-events-intro,
+  #eizo-events-widget .eizo-events-backdrop.active .eizo-event-card { animation: eizo-events-content-in .5s cubic-bezier(.22,1,.36,1) both; }
+  #eizo-events-widget .eizo-events-backdrop.active .eizo-events-kicker { animation-delay: .05s; }
+  #eizo-events-widget .eizo-events-backdrop.active .eizo-events-title { animation-delay: .09s; }
+  #eizo-events-widget .eizo-events-backdrop.active .eizo-events-intro { animation-delay: .13s; }
+  #eizo-events-widget .eizo-events-backdrop.active .eizo-event-card:nth-child(1) { animation-delay: .18s; }
+  #eizo-events-widget .eizo-events-backdrop.active .eizo-event-card:nth-child(2) { animation-delay: .24s; }
+  @keyframes eizo-events-content-in { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+  #eizo-events-widget .eizo-events-kicker { margin: 0 0 8px; color: #0066cc; font-size: 12px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+  #eizo-events-widget .eizo-events-title { margin: 0; color: #0b1220; font-size: clamp(28px, 5vw, 42px); line-height: 1.08; }
+  #eizo-events-widget .eizo-events-intro { max-width: 620px; margin: 14px 0 32px; color: #667085; font-size: 16px; line-height: 1.6; }
+  #eizo-events-widget .eizo-events-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 18px; }
+  #eizo-events-widget .eizo-event-card { display: flex; min-height: 260px; flex-direction: column; align-items: flex-start; padding: 26px; border: 1px solid #dfe5ec; border-radius: 16px; background: #fff; color: #0b1220; text-align: left; }
+  #eizo-events-widget button.eizo-event-card { cursor: pointer; transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
+  #eizo-events-widget button.eizo-event-card:hover { transform: translateY(-3px); border-color: #0066cc; box-shadow: 0 14px 34px rgba(0,102,204,.12); }
+  #eizo-events-widget .eizo-event-date { color: #0066cc; font-size: 13px; font-weight: 700; text-transform: uppercase; }
+  #eizo-events-widget .eizo-event-name { margin: 18px 0 8px; font-size: 25px; font-weight: 750; }
+  #eizo-events-widget .eizo-event-place { margin: 0; color: #667085; font-size: 14px; line-height: 1.55; }
+  #eizo-events-widget .eizo-event-action { margin-top: auto; padding-top: 24px; color: #0066cc; font-size: 14px; font-weight: 700; }
+  #eizo-events-widget .eizo-event-card.soon { background: #f7f8fa; color: #667085; }
+  #eizo-events-widget .eizo-event-badge { margin-top: auto; padding: 7px 10px; border-radius: 999px; background: #e9edf2; color: #667085; font-size: 12px; font-weight: 700; }
+  #eizo-events-widget .eizo-events-calendar { display: none; height: min(820px, calc(100dvh - 32px)); }
+  #eizo-events-widget .eizo-events-calendar.active { display: flex; flex-direction: column; animation: eizo-events-calendar-in .48s cubic-bezier(.22,1,.36,1) both; }
+  @keyframes eizo-events-calendar-in { from { opacity: 0; transform: translateX(24px) scale(.985); } to { opacity: 1; transform: translateX(0) scale(1); } }
+  #eizo-events-widget .eizo-events-toolbar { display: flex; align-items: center; min-height: 68px; padding: 12px 72px 12px 20px; border-bottom: 1px solid #e6eaf0; }
+  #eizo-events-widget .eizo-events-back { border: 0; background: transparent; color: #0066cc; font-size: 14px; font-weight: 700; cursor: pointer; }
+  #eizo-events-widget .eizo-events-frame { width: 100%; flex: 1; border: 0; background: #f8fafc; }
+  @media (max-width: 680px) {
+    #eizo-events-widget .eizo-events-backdrop { padding: 0; }
+    #eizo-events-widget .eizo-events-modal { width: 100%; height: 100dvh; max-height: none; border-radius: 0; }
+    #eizo-events-widget .eizo-events-picker { padding: 72px 20px 28px; }
+    #eizo-events-widget .eizo-events-grid { grid-template-columns: 1fr; }
+    #eizo-events-widget .eizo-event-card { min-height: 210px; }
+    #eizo-events-widget .eizo-events-calendar { height: 100dvh; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #eizo-events-widget button.eizo-event-card { transition: none; }
+    #eizo-events-widget .eizo-events-backdrop.active,
+    #eizo-events-widget .eizo-events-backdrop.active .eizo-events-modal,
+    #eizo-events-widget .eizo-events-backdrop.active .eizo-events-logo,
+    #eizo-events-widget .eizo-events-backdrop.active .eizo-events-kicker,
+    #eizo-events-widget .eizo-events-backdrop.active .eizo-events-title,
+    #eizo-events-widget .eizo-events-backdrop.active .eizo-events-intro,
+    #eizo-events-widget .eizo-events-backdrop.active .eizo-event-card,
+    #eizo-events-widget .eizo-events-calendar.active { animation: none; }
+  }
+</style>
+
+<div id="eizo-events-widget">
+  <div class="eizo-events-backdrop" id="eizo-events-backdrop" aria-hidden="true">
+    <section class="eizo-events-modal" role="dialog" aria-modal="true" aria-labelledby="eizo-events-title">
+      <button class="eizo-events-close" id="eizo-events-close" type="button" aria-label="Fermer">×</button>
+
+      <div class="eizo-events-picker" id="eizo-events-picker">
+        <img class="eizo-events-logo" src="https://eizo.fr/cdn/shop/files/EIZO-Logo_RGB.png?v=1732704479&amp;width=310" alt="EIZO">
+        <p class="eizo-events-kicker">Rencontrez EIZO</p>
+        <h2 class="eizo-events-title" id="eizo-events-title">Choisissez votre événement</h2>
+        <p class="eizo-events-intro">Sélectionnez un événement pour réserver un rendez-vous avec notre équipe.</p>
+        <div class="eizo-events-grid">
+          <button class="eizo-event-card" id="eizo-event-ibc" type="button">
+            <span class="eizo-event-date">September 11–14, 2026</span>
+            <span class="eizo-event-name">IBC 2026</span>
+            <span class="eizo-event-place">RAI Amsterdam, the Netherlands<br>Stand 7.D33</span>
+            <span class="eizo-event-action">Choisir un créneau →</span>
+          </button>
+
+          <article class="eizo-event-card soon" aria-label="Tech Day, informations à venir">
+            <span class="eizo-event-date">Prochainement</span>
+            <span class="eizo-event-name">Tech Day</span>
+            <span class="eizo-event-place">Les dates, le lieu et les créneaux seront communiqués prochainement.</span>
+            <span class="eizo-event-badge">Informations à venir</span>
+          </article>
+        </div>
+      </div>
+
+      <div class="eizo-events-calendar" id="eizo-events-calendar">
+        <div class="eizo-events-toolbar">
+          <button class="eizo-events-back" id="eizo-events-back" type="button">← Choisir un autre événement</button>
+        </div>
+        <iframe
+          class="eizo-events-frame"
+          id="eizo-events-frame"
+          title="Réserver un rendez-vous à IBC 2026"
+          data-src="https://eizo-rendezvous-api-vercel-app.vercel.app/booking/ibc-2026"
+          loading="lazy"
+        ></iframe>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  const backdrop = document.getElementById('eizo-events-backdrop');
+  const picker = document.getElementById('eizo-events-picker');
+  const calendar = document.getElementById('eizo-events-calendar');
+  const frame = document.getElementById('eizo-events-frame');
+  const closeButton = document.getElementById('eizo-events-close');
+  let previousFocus = null;
+
+  function openEvents() {
+    previousFocus = document.activeElement;
+    picker.style.display = 'block';
+    calendar.classList.remove('active');
+    backdrop.classList.add('active');
+    backdrop.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    closeButton.focus();
+  }
+
+  function closeEvents() {
+    backdrop.classList.remove('active');
+    backdrop.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    if (previousFocus && previousFocus.focus) previousFocus.focus();
+  }
+
+  function openIbcCalendar() {
+    picker.style.display = 'none';
+    calendar.classList.add('active');
+    if (!frame.src) frame.src = frame.dataset.src;
+    document.getElementById('eizo-events-back').focus();
+  }
+
+  function showPicker() {
+    calendar.classList.remove('active');
+    picker.style.display = 'block';
+    document.getElementById('eizo-event-ibc').focus();
+  }
+
+  document.addEventListener('click', function (event) {
+    const link = event.target.closest('a[href="#eizo-events"], a[href$="#eizo-events"]');
+    if (!link) return;
+    event.preventDefault();
+    openEvents();
+  });
+
+  closeButton.addEventListener('click', closeEvents);
+  document.getElementById('eizo-event-ibc').addEventListener('click', openIbcCalendar);
+  document.getElementById('eizo-events-back').addEventListener('click', showPicker);
+  backdrop.addEventListener('click', function (event) { if (event.target === backdrop) closeEvents(); });
+  document.addEventListener('keydown', function (event) { if (event.key === 'Escape' && backdrop.classList.contains('active')) closeEvents(); });
+
+  if (window.location.hash === '#eizo-events') openEvents();
+  window.addEventListener('hashchange', function () { if (window.location.hash === '#eizo-events') openEvents(); });
+})();
+</script>

@@ -1,5 +1,8 @@
 BEGIN;
 
+ALTER TABLE bookings
+  ADD COLUMN IF NOT EXISTS booking_language TEXT NOT NULL DEFAULT 'fr';
+
 ALTER TABLE organizers
   ADD COLUMN IF NOT EXISTS event_start_date DATE,
   ADD COLUMN IF NOT EXISTS event_end_date DATE,

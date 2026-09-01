@@ -79,7 +79,7 @@ export async function PATCH(
 
     const { data: organizer } = await supabase
       .from('organizers')
-      .select('id, name, slug, email, notification_email, slot_duration_minutes')
+      .select('id, name, slug, email, notification_email, slot_duration_minutes, venue_name, venue_location, booth')
       .eq('id', booking.organizer_id)
       .single();
 
@@ -118,6 +118,11 @@ export async function PATCH(
         customerUsage: booking.customer_usage,
         customerNeed: booking.customer_need,
         managementToken: booking.management_token,
+        organizerSlug: organizer.slug,
+        language: booking.booking_language === 'en' ? 'en' as const : 'fr' as const,
+        venueName: organizer.venue_name,
+        venueLocation: organizer.venue_location,
+        booth: organizer.booth,
       };
 
       try {

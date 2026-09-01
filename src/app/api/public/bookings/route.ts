@@ -95,6 +95,7 @@ export async function POST(request: NextRequest) {
     const productsViewed = sanitizeProductsViewed(body.productsViewed);
 
     const organizerId = body.organizerId;
+    const language: 'fr' | 'en' = body.language === 'en' ? 'en' : 'fr';
     const date = sanitizeString(body.date, 20);
     const time = sanitizeString(body.time, 10);
 
@@ -180,6 +181,7 @@ export async function POST(request: NextRequest) {
         status: 'pending',
         confirmation_token: confirmationToken,
         management_token: managementToken,
+        booking_language: language,
       })
       .select()
       .single();
@@ -211,6 +213,11 @@ export async function POST(request: NextRequest) {
         declineUrl,
         cancelUrl,
         managementToken,
+        organizerSlug: organizer.slug,
+        language,
+        venueName: organizer.venue_name,
+        venueLocation: organizer.venue_location,
+        booth: organizer.booth,
       };
 
       await Promise.all([

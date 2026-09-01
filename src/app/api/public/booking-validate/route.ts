@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
 
     const { data: organizer } = await supabase
       .from('organizers')
-      .select('name, email, notification_email')
+      .select('name, slug, email, notification_email, venue_name, venue_location, booth')
       .eq('id', booking.organizer_id)
       .single();
 
@@ -183,6 +183,11 @@ export async function GET(request: NextRequest) {
           customerNeed: booking.customer_need,
           notes: booking.customer_notes || undefined,
           managementToken: booking.management_token,
+          organizerSlug: organizer?.slug,
+          language: booking.booking_language === 'en' ? 'en' : 'fr',
+          venueName: organizer?.venue_name,
+          venueLocation: organizer?.venue_location,
+          booth: organizer?.booth,
         });
       } catch (emailError) {
         console.error('[validate booking] customer email error:', emailError);
@@ -250,6 +255,11 @@ export async function GET(request: NextRequest) {
           customerUsage: booking.customer_usage,
           customerNeed: booking.customer_need,
           managementToken: booking.management_token,
+          organizerSlug: organizer?.slug,
+          language: booking.booking_language === 'en' ? 'en' : 'fr',
+          venueName: organizer?.venue_name,
+          venueLocation: organizer?.venue_location,
+          booth: organizer?.booth,
         });
       } catch (emailError) {
         console.error('[validate booking] decline customer email error:', emailError);
@@ -304,6 +314,11 @@ export async function GET(request: NextRequest) {
           customerUsage: booking.customer_usage,
           customerNeed: booking.customer_need,
           managementToken: booking.management_token,
+          organizerSlug: organizer?.slug,
+          language: booking.booking_language === 'en' ? 'en' : 'fr',
+          venueName: organizer?.venue_name,
+          venueLocation: organizer?.venue_location,
+          booth: organizer?.booth,
         });
       } catch (emailError) {
         console.error('[validate booking] cancel customer email error:', emailError);

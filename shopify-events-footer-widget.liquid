@@ -117,7 +117,22 @@
   const calendar = document.getElementById('eizo-events-calendar');
   const frame = document.getElementById('eizo-events-frame');
   const closeButton = document.getElementById('eizo-events-close');
+  const siteLanguage = (document.documentElement.lang || navigator.language || 'fr').toLowerCase();
+  const isEnglish = siteLanguage.startsWith('en');
   let previousFocus = null;
+
+  function applyLanguage() {
+    if (!isEnglish) return;
+    document.querySelector('.eizo-events-kicker').textContent = 'Meet EIZO';
+    document.querySelector('.eizo-events-title').textContent = 'Choose your event';
+    document.querySelector('.eizo-events-intro').textContent = 'Select an event to book an appointment with our team.';
+    document.querySelector('#eizo-event-ibc .eizo-event-action').textContent = 'Choose a time →';
+    document.querySelector('.eizo-event-card.soon .eizo-event-date').textContent = 'Coming soon';
+    document.querySelector('.eizo-event-card.soon .eizo-event-place').textContent = 'Dates, venue and available times will be announced soon.';
+    document.querySelector('.eizo-event-badge').textContent = 'Details coming soon';
+    document.getElementById('eizo-events-back').textContent = '← Choose another event';
+    closeButton.setAttribute('aria-label', 'Close');
+  }
 
   function openEvents() {
     previousFocus = document.activeElement;
@@ -139,7 +154,7 @@
   function openIbcCalendar() {
     picker.style.display = 'none';
     calendar.classList.add('active');
-    if (!frame.src) frame.src = frame.dataset.src;
+    if (!frame.src) frame.src = `${frame.dataset.src}?lang=${isEnglish ? 'en' : 'fr'}`;
     document.getElementById('eizo-events-back').focus();
   }
 
@@ -162,6 +177,7 @@
   backdrop.addEventListener('click', function (event) { if (event.target === backdrop) closeEvents(); });
   document.addEventListener('keydown', function (event) { if (event.key === 'Escape' && backdrop.classList.contains('active')) closeEvents(); });
 
+  applyLanguage();
   if (window.location.hash === '#eizo-events') openEvents();
   window.addEventListener('hashchange', function () { if (window.location.hash === '#eizo-events') openEvents(); });
 })();

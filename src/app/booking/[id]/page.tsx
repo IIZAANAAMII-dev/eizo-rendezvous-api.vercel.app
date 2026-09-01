@@ -51,11 +51,26 @@ export default function BookingCalendarPage() {
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [bookingData, setBookingData] = useState({ name: '', email: '', phone: '', notes: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [language, setLanguage] = useState<'fr' | 'en'>('fr');
 
   const cardsRef = useRef<HTMLDivElement[]>([]);
+  const successRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!bookingSuccess || !successRef.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const context = gsap.context(() => {
+      gsap.fromTo(successRef.current, { opacity: 0, y: 28, scale: 0.94 }, { opacity: 1, y: 0, scale: 1, duration: 0.7, ease: 'back.out(1.5)' });
+      gsap.fromTo(successRef.current?.children || [], { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, stagger: 0.07, delay: 0.18, ease: 'power2.out' });
+    }, successRef);
+    return () => context.revert();
+  }, [bookingSuccess]);
 
   useEffect(() => {
     fetchOrganizer();
+    const requestedLanguage = new URLSearchParams(window.location.search).get('lang');
+    const pageLanguage = document.documentElement.lang || navigator.language;
+    setLanguage(requestedLanguage === 'en' || (!requestedLanguage && pageLanguage.toLowerCase().startsWith('en')) ? 'en' : 'fr');
   }, [params.id]);
 
   const fetchOrganizer = async () => {
@@ -104,6 +119,12 @@ export default function BookingCalendarPage() {
 
   const formatTime = (t: string) => t ? t.slice(0, 5) : '';
   const formatSlot = (slot: TimeSlot) => `${formatTime(slot.time)} - ${formatTime(slot.end)}`;
+  const formatLocalDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -130,7 +151,7 @@ export default function BookingCalendarPage() {
   };
 
   const fetchAvailableSlots = async (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = formatLocalDate(date);
     try {
       const response = await fetch(`/api/public/availability/${params.id}?date=${dateStr}`);
       const data = await response.json();
@@ -151,7 +172,7 @@ export default function BookingCalendarPage() {
 
   const handleBookingSubmit = async () => {
     if (!bookingData.name.trim() || !bookingData.email.trim() || !bookingData.phone.trim()) {
-      alert('Veuillez renseigner votre nom, email et téléphone.');
+      alert(isEnglish ? 'Please enter your name, email and phone number.' : 'Veuillez renseigner votre nom, email et téléphone.');
       return;
     }
     setIsSubmitting(true);
@@ -161,25 +182,31 @@ export default function BookingCalendarPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           organizerId: params.id,
-          date: selectedDate?.toISOString().split('T')[0],
+          date: selectedDate ? formatLocalDate(selectedDate) : undefined,
           time: selectedTime,
           customerName: bookingData.name,
           customerEmail: bookingData.email,
           customerPhone: bookingData.phone,
           notes: bookingData.notes,
+          language,
         }),
       });
 
       if (response.ok) {
-        alert('Demande enregistrée. Vous recevrez un email de confirmation dès validation.');
-        router.push('/booking');
+        if (isIbc) {
+          setIsBookingModalOpen(false);
+          setBookingSuccess(true);
+        } else {
+          alert('Demande enregistrée. Vous recevrez un email de confirmation dès validation.');
+          router.push('/booking');
+        }
       } else {
         const error = await response.json();
-        alert(error.error || 'Erreur lors de la réservation');
+        alert(error.error || (isEnglish ? 'Unable to book this appointment' : 'Erreur lors de la réservation'));
       }
     } catch (error) {
       console.error('Failed to create booking:', error);
-      alert('Erreur lors de la réservation');
+      alert(isEnglish ? 'Unable to book this appointment' : 'Erreur lors de la réservation');
     } finally {
       setIsSubmitting(false);
     }
@@ -208,30 +235,53 @@ export default function BookingCalendarPage() {
   const days = getDaysInMonth(currentMonth);
   const monthName = currentMonth.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
   const isIbc = params.id === 'ibc-2026';
+  const isEnglish = isIbc && language === 'en';
+  const locale = isEnglish ? 'en-GB' : 'fr-FR';
   const isEvent = isIbc || Boolean(organizer.event_start_date && organizer.event_end_date);
   const eventStartDate = organizer.event_start_date || (isIbc ? '2026-09-11' : undefined);
   const eventEndDate = organizer.event_end_date || (isIbc ? '2026-09-14' : undefined);
   const eventDates = eventStartDate && eventEndDate
-    ? `${new Date(`${eventStartDate}T12:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })} – ${new Date(`${eventEndDate}T12:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`
+    ? `${new Date(`${eventStartDate}T12:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'long' })} – ${new Date(`${eventEndDate}T12:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })}`
     : null;
   const eventDays = isIbc ? [11, 12, 13, 14].map(day => new Date(2026, 8, day)) : [];
   const exhibits = organizer.description?.split('|').filter(Boolean) || [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
-      <div className="max-w-6xl mx-auto px-6 py-12">
-        <Button
-          onClick={() => router.push('/booking')}
-          variant="ghost"
-          className="mb-6 text-gray-600 hover:text-gray-900"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Retour
-        </Button>
+    <div className={isIbc ? 'min-h-screen bg-[#f4f7fb]' : 'min-h-screen bg-gradient-to-br from-blue-50 to-white'}>
+      <div className={`mx-auto max-w-6xl ${isIbc ? 'px-4 py-5' : 'px-6 py-12'}`}>
+        {!isIbc && (
+          <Button
+            onClick={() => router.push('/booking')}
+            variant="ghost"
+            className="mb-6 text-gray-600 hover:text-gray-900"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Retour
+          </Button>
+        )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-1">
-            <Card className="sticky top-6">
+        {bookingSuccess && isIbc ? (
+          <div className="mx-auto flex min-h-[620px] max-w-2xl items-center justify-center px-4">
+            <div ref={successRef} className="w-full rounded-3xl border border-emerald-100 bg-white p-10 text-center shadow-2xl shadow-slate-200/80">
+              <div className="mx-auto mb-7 flex h-24 w-24 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 shadow-inner">
+                <Check className="h-12 w-12" strokeWidth={2.5} />
+              </div>
+              <img src="https://eizo.fr/cdn/shop/files/EIZO-Logo_RGB.png?v=1732704479&width=310" alt="EIZO" className="mx-auto mb-8 h-auto w-32" />
+              <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-[#0066cc]">IBC 2026</p>
+              <h1 className="text-3xl font-bold tracking-tight text-slate-950">{isEnglish ? 'Request successfully submitted' : 'Demande envoyée avec succès'}</h1>
+              <p className="mx-auto mt-4 max-w-lg text-base leading-7 text-slate-600">
+                {isEnglish ? 'Your appointment request has been sent to the EIZO team. You will receive an email as soon as it has been confirmed.' : 'Votre demande de rendez-vous a été transmise à l’équipe EIZO. Vous recevrez un email dès qu’elle aura été confirmée.'}
+              </p>
+              <div className="mt-8 rounded-2xl bg-slate-50 px-6 py-5 text-sm text-slate-600">
+                <strong className="text-slate-900">RAI Amsterdam</strong><br />
+                Amsterdam, the Netherlands · {isEnglish ? 'Booth' : 'Stand'} 7.D33
+              </div>
+            </div>
+          </div>
+        ) : (
+        <div className={`grid grid-cols-1 gap-5 ${isIbc ? 'md:grid-cols-[280px_minmax(0,1fr)]' : 'lg:grid-cols-3 lg:gap-8'}`}>
+          <div className={isIbc ? '' : 'lg:col-span-1'}>
+            <Card className={isIbc ? 'overflow-hidden border-0 shadow-xl shadow-slate-200/70' : 'sticky top-6'}>
               <CardContent className="p-6">
                 <div className="flex items-center gap-4 mb-6">
                   {isIbc ? (
@@ -257,7 +307,7 @@ export default function BookingCalendarPage() {
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Clock className="w-4 h-4" />
-                    <span>{organizer.slot_duration_minutes === 60 ? '1 heure' : `${organizer.slot_duration_minutes || 60} min`} de rendez-vous</span>
+                    <span>{organizer.slot_duration_minutes === 60 ? (isEnglish ? '1-hour appointment' : '1 heure de rendez-vous') : `${organizer.slot_duration_minutes || 60} min${isEnglish ? ' appointment' : ' de rendez-vous'}`}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <MapPin className="w-4 h-4" />
@@ -275,7 +325,7 @@ export default function BookingCalendarPage() {
                 </div>
                 {isEvent && exhibits.length > 0 && (
                   <div className="mt-6 border-t border-gray-200 pt-5">
-                    <h3 className="mb-3 text-sm font-semibold text-gray-900">Produits présentés</h3>
+                    <h3 className="mb-3 text-sm font-semibold text-gray-900">{isEnglish ? 'Products on display' : 'Produits présentés'}</h3>
                     <ul className="space-y-2 text-sm text-gray-600">
                       {exhibits.map((exhibit) => <li key={exhibit}>• {exhibit}</li>)}
                     </ul>
@@ -285,19 +335,19 @@ export default function BookingCalendarPage() {
             </Card>
           </div>
 
-          <div className="lg:col-span-2 space-y-6">
+          <div className={isIbc ? 'min-w-0 space-y-5' : 'lg:col-span-2 space-y-6'}>
             <Card>
               <CardContent className="p-6">
                 {isIbc ? (
                   <div>
                     <div className="mb-6">
                       <p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-[#0066cc]">IBC 2026</p>
-                      <h3 className="text-2xl font-semibold text-gray-900">Choisissez votre journée</h3>
-                      <p className="mt-2 text-sm text-gray-500">Uniquement du 11 au 14 septembre 2026</p>
+                      <h3 className="text-2xl font-semibold text-gray-900">{isEnglish ? 'Choose your day' : 'Choisissez votre journée'}</h3>
+                      <p className="mt-2 text-sm text-gray-500">{isEnglish ? 'Available September 11–14, 2026 only' : 'Uniquement du 11 au 14 septembre 2026'}</p>
                     </div>
                     <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                       {eventDays.map((date) => {
-                        const dateStr = date.toISOString().split('T')[0];
+                        const dateStr = formatLocalDate(date);
                         const hasAvailable = (monthSlots[dateStr] || []).some(slot => slot.available);
                         const isSelected = selectedDate?.toDateString() === date.toDateString();
                         return (
@@ -315,10 +365,10 @@ export default function BookingCalendarPage() {
                             }`}
                           >
                             <span className={`block text-xs font-bold uppercase tracking-wider ${isSelected ? 'text-blue-100' : 'text-[#0066cc]'}`}>
-                              {date.toLocaleDateString('fr-FR', { weekday: 'long' })}
+                              {date.toLocaleDateString(locale, { weekday: 'long' })}
                             </span>
                             <span className="mt-3 block text-3xl font-bold">{date.getDate()}</span>
-                            <span className={`mt-1 block text-sm ${isSelected ? 'text-blue-100' : 'text-gray-500'}`}>septembre</span>
+                            <span className={`mt-1 block text-sm ${isSelected ? 'text-blue-100' : 'text-gray-500'}`}>{isEnglish ? 'September' : 'septembre'}</span>
                           </button>
                         );
                       })}
@@ -358,7 +408,7 @@ export default function BookingCalendarPage() {
                     const isSelected = selectedDate?.toDateString() === date.toDateString();
                     const isPast = date < today;
                     const isToday = date.toDateString() === today.toDateString();
-                    const dateStr = date.toISOString().split('T')[0];
+                    const dateStr = formatLocalDate(date);
                     const slots = monthSlots[dateStr] || [];
                     const hasAvailable = slots.some(s => s.available);
                     const isDisabled = isPast || !hasAvailable;
@@ -392,7 +442,7 @@ export default function BookingCalendarPage() {
               <Card>
                 <CardContent className="p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                    Créneaux disponibles - {availableDays[0].dayName}
+                    {isEnglish ? 'Available times' : 'Créneaux disponibles'} - {selectedDate?.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}
                   </h3>
                   <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
                     {availableDays[0].slots.map((slot, index) => (
@@ -417,23 +467,24 @@ export default function BookingCalendarPage() {
             )}
           </div>
         </div>
+        )}
 
         <Dialog open={isBookingModalOpen} onOpenChange={setIsBookingModalOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Confirmer le rendez-vous</DialogTitle>
+              <DialogTitle>{isEnglish ? 'Confirm your appointment' : 'Confirmer le rendez-vous'}</DialogTitle>
               <DialogDescription>
-                {selectedDate?.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })} à {selectedTime}
+                {selectedDate?.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })} {isEnglish ? 'at' : 'à'} {selectedTime}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Nom complet</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{isEnglish ? 'Full name' : 'Nom complet'}</label>
                 <input
                   type="text"
                   value={bookingData.name}
                   onChange={(e) => setBookingData({ ...bookingData, name: e.target.value })}
-                  placeholder="Votre nom"
+                  placeholder={isEnglish ? 'Your name' : 'Votre nom'}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0066cc]"
                 />
               </div>
@@ -448,7 +499,7 @@ export default function BookingCalendarPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Téléphone <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{isEnglish ? 'Phone' : 'Téléphone'} <span className="text-red-500">*</span></label>
                 <input
                   type="tel"
                   required
@@ -459,11 +510,11 @@ export default function BookingCalendarPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Notes (optionnel)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{isEnglish ? 'Notes (optional)' : 'Notes (optionnel)'}</label>
                 <textarea
                   value={bookingData.notes}
                   onChange={(e) => setBookingData({ ...bookingData, notes: e.target.value })}
-                  placeholder="Détails supplémentaires..."
+                  placeholder={isEnglish ? 'Additional details...' : 'Détails supplémentaires...'}
                   rows={3}
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0066cc]"
                 />
@@ -473,7 +524,7 @@ export default function BookingCalendarPage() {
                 disabled={isSubmitting}
                 className="w-full bg-[#0066cc] hover:bg-[#0052a3] text-white font-medium"
               >
-                {isSubmitting ? 'Confirmation...' : 'Confirmer le rendez-vous'}
+                {isSubmitting ? (isEnglish ? 'Confirming...' : 'Confirmation...') : (isEnglish ? 'Confirm appointment' : 'Confirmer le rendez-vous')}
               </Button>
             </div>
           </DialogContent>

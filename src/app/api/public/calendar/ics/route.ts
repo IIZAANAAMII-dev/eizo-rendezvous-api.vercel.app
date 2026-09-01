@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     const isIbc = organizer?.slug === 'ibc-2026';
     const language = booking.requested_product?.language === 'en' ? 'en' : 'fr';
     const location = isIbc
-      ? `${organizer?.venue_name || 'RAI Amsterdam'}, ${organizer?.venue_location || 'Amsterdam, the Netherlands'}, ${language === 'en' ? 'Booth' : 'Stand'} ${organizer?.booth || '7.D33'}`
+      ? `${organizer?.venue_name || 'RAI Amsterdam'}, ${organizer?.venue_location || 'Amsterdam, the Netherlands'}, Hall 7, ${language === 'en' ? 'Booth' : 'Stand'} D33`
       : siteConfig.showroom.fullAddress;
     const requestedProduct = booking.requested_product?.title || booking.product_title || 'ColorEdge';
     const startTime = booking.start_time.slice(0, 5);

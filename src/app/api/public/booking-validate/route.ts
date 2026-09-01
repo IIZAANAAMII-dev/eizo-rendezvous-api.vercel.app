@@ -70,7 +70,7 @@ function ibcHtmlPage(title: string, message: string, details: string, success: b
   const color = success ? '#10B981' : '#0066CC';
   return `<!DOCTYPE html><html lang="${language}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style>
     *{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px;background:radial-gradient(circle at top right,#dbeafe 0,#f8fafc 42%,#eef2f7 100%);color:#0f172a}.card{width:100%;max-width:620px;background:rgba(255,255,255,.96);border-radius:28px;overflow:hidden;box-shadow:0 28px 80px rgba(15,23,42,.16);animation:enter .6s cubic-bezier(.22,1,.36,1)}.head{padding:28px 34px;border-bottom:1px solid #e8edf3}.head img{display:block;width:120px;height:auto}.body{padding:38px 34px}.kicker{margin:0 0 10px;color:#0066cc;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}h1{margin:0 0 16px;font-size:28px;line-height:1.2}p{color:#64748b;line-height:1.65}.icon{display:flex;width:72px;height:72px;margin-bottom:24px;align-items:center;justify-content:center;border-radius:22px;background:${color}14;color:${color};font-size:32px;font-weight:800}.details{margin:26px 0 0;padding:22px;border-radius:18px;background:#f8fafc}.details p{margin:7px 0;color:#334155}.details span{color:#64748b}.venue{margin-top:18px;padding:18px;border-radius:16px;background:#0066cc;color:white;font-size:14px;line-height:1.6}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}.btn{display:inline-flex;padding:13px 18px;border-radius:10px;text-decoration:none;font-size:14px;font-weight:700}.btn-primary{background:#0066cc;color:#fff}.btn-outline{background:#eef2f6;color:#064b8e}@keyframes enter{from{opacity:0;transform:translateY(24px) scale(.96)}to{opacity:1;transform:none}}@media(prefers-reduced-motion:reduce){.card{animation:none}}
-  </style></head><body><main class="card"><div class="head"><img src="https://eizo.fr/cdn/shop/files/EIZO-Logo_RGB.png?v=1732704479&amp;width=310" alt="EIZO"></div><div class="body"><div class="icon">${success ? '✓' : '×'}</div><p class="kicker">IBC 2026 · September 11–14</p><h1>${title}</h1><p>${message}</p>${details}<div class="venue"><strong>RAI Amsterdam</strong><br>Amsterdam, the Netherlands · ${language === 'en' ? 'Booth' : 'Stand'} 7.D33</div></div></main></body></html>`;
+  </style></head><body><main class="card"><div class="head"><img src="https://eizo.fr/cdn/shop/files/EIZO-Logo_RGB.png?v=1732704479&amp;width=310" alt="EIZO"></div><div class="body"><div class="icon">${success ? '✓' : '×'}</div><p class="kicker">IBC 2026 · September 11–14</p><h1>${title}</h1><p>${message}</p>${details}<div class="venue"><strong>RAI Amsterdam</strong><br>Amsterdam, the Netherlands · Hall 7 · ${language === 'en' ? 'Booth' : 'Stand'} D33</div></div></main></body></html>`;
 }
 
 export async function GET(request: NextRequest) {
@@ -107,6 +107,7 @@ export async function GET(request: NextRequest) {
 
     const isIbc = organizer?.slug === 'ibc-2026';
     const language: 'fr' | 'en' = booking.requested_product?.language === 'en' ? 'en' : 'fr';
+    const modification = isIbc ? booking.requested_product?.modification : null;
     const dateLabel = isIbc
       ? new Date(`${booking.date}T12:00:00`).toLocaleDateString(language === 'en' ? 'en-GB' : 'fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
       : formatDate(booking.date);
@@ -155,7 +156,7 @@ export async function GET(request: NextRequest) {
       }
 
       const calendarTitle = isIbc ? `EIZO at IBC 2026 — ${booking.customer_name}` : `Démonstration EIZO ColorEdge — ${booking.customer_name}`;
-      const calendarLocation = isIbc ? 'RAI Amsterdam, Amsterdam, the Netherlands, Booth 7.D33' : siteConfig.showroom.fullAddress;
+      const calendarLocation = isIbc ? 'RAI Amsterdam, Amsterdam, the Netherlands, Hall 7, Booth D33' : siteConfig.showroom.fullAddress;
       const googleUrl = buildGoogleCalendarUrl({
         title: calendarTitle,
         startDate: booking.date,
@@ -223,10 +224,12 @@ export async function GET(request: NextRequest) {
         </div>
       `;
 
-      const acceptedTitle = language === 'en' ? 'Appointment confirmed' : 'Rendez-vous confirmé';
-      const acceptedMessage = language === 'en'
-        ? `The IBC 2026 appointment with ${booking.customer_name} is confirmed. The customer has been notified.`
-        : `Le rendez-vous IBC 2026 avec ${booking.customer_name} est confirmé. Le client a été informé.`;
+      const acceptedTitle = modification
+        ? (language === 'en' ? 'Appointment change confirmed' : 'Modification confirmée')
+        : (language === 'en' ? 'Appointment confirmed' : 'Rendez-vous confirmé');
+      const acceptedMessage = modification
+        ? (language === 'en' ? `The appointment change for ${booking.customer_name} has been confirmed. The customer has been notified.` : `La modification du rendez-vous de ${booking.customer_name} est confirmée. Le client a été informé.`)
+        : (language === 'en' ? `The IBC 2026 appointment with ${booking.customer_name} is confirmed. The customer has been notified.` : `Le rendez-vous IBC 2026 avec ${booking.customer_name} est confirmé. Le client a été informé.`);
       return new NextResponse(
         isIbc ? ibcHtmlPage(acceptedTitle, acceptedMessage, `${commonDetails}${actions}`, true, language) : htmlPage('Rendez-vous accepté', `${commonDetails}<p>Le rendez-vous avec ${booking.customer_name} est confirmé.</p>${actions}${contact}<p style="font-size: 13px; color: #6b7280; margin-top: 20px;"><a href="${manageUrl}" style="color: #0066CC; text-decoration: none;">Gérer le rendez-vous →</a></p>`, true),
         { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
@@ -248,9 +251,18 @@ export async function GET(request: NextRequest) {
         );
       }
 
+      const declineUpdate = modification
+        ? {
+            status: modification.previousStatus,
+            date: modification.previousDate,
+            start_time: modification.previousTime,
+            end_time: modification.previousEndTime,
+            refused_at: null,
+          }
+        : { status: 'refused', refused_at: new Date().toISOString() };
       const { error: updateError } = await supabase
         .from('bookings')
-        .update({ status: 'refused', refused_at: new Date().toISOString() })
+        .update(declineUpdate)
         .eq('id', booking.id);
 
       if (updateError) {
@@ -290,10 +302,12 @@ export async function GET(request: NextRequest) {
         </div>
       `;
 
-      const declinedTitle = language === 'en' ? 'Request declined' : 'Demande refusée';
-      const declinedMessage = language === 'en'
-        ? `The appointment request from ${booking.customer_name} has been declined. The customer has been notified by email.`
-        : `La demande de rendez-vous de ${booking.customer_name} a été refusée. Le client a été informé par email.`;
+      const declinedTitle = modification
+        ? (language === 'en' ? 'Appointment change declined' : 'Modification refusée')
+        : (language === 'en' ? 'Request declined' : 'Demande refusée');
+      const declinedMessage = modification
+        ? (language === 'en' ? `The requested appointment change for ${booking.customer_name} was declined. The original appointment remains confirmed.` : `La modification demandée par ${booking.customer_name} a été refusée. Le rendez-vous initial reste confirmé.`)
+        : (language === 'en' ? `The appointment request from ${booking.customer_name} has been declined. The customer has been notified by email.` : `La demande de rendez-vous de ${booking.customer_name} a été refusée. Le client a été informé par email.`);
       return new NextResponse(
         isIbc ? ibcHtmlPage(declinedTitle, declinedMessage, commonDetails, false, language) : htmlPage('Rendez-vous refusé', `${commonDetails}<p>La demande de ${booking.customer_name} pour le ${dateLabel} de ${timeLabel} à ${endTimeLabel} a été refusée.</p><p>Le client a été informé et peut choisir un autre créneau.</p>${contact}`, false, manageUrl),
         { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }

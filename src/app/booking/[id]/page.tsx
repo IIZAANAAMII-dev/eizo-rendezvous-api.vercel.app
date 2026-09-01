@@ -293,7 +293,7 @@ export default function BookingCalendarPage() {
               </p>
               <div className="mt-8 rounded-2xl bg-slate-50 px-6 py-5 text-sm text-slate-600">
                 <strong className="text-slate-900">RAI Amsterdam</strong><br />
-                Amsterdam, the Netherlands · {isEnglish ? 'Booth' : 'Stand'} 7.D33
+                Amsterdam, the Netherlands · Hall 7 · {isEnglish ? 'Booth' : 'Stand'} D33
               </div>
             </div>
           </div>

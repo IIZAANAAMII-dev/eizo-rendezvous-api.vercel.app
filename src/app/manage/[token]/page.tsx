@@ -135,8 +135,15 @@ export default function ManageBookingPage() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Erreur');
-      setMessage('Votre demande de modification a bien été enregistrée et est en attente de validation.');
+      setMessage(isIbc
+        ? (isEnglish ? 'Your appointment change has been submitted and is awaiting approval.' : 'Votre rendez-vous a été modifié et votre demande est en attente de validation.')
+        : 'Votre demande de modification a bien été enregistrée et est en attente de validation.');
       setBooking(data.booking);
+      if (isIbc) {
+        setTimeout(() => {
+          window.location.href = `${siteConfig.appUrl}/booking/ibc-2026?lang=${isEnglish ? 'en' : 'fr'}`;
+        }, 2500);
+      }
     } catch (err: any) {
       setMessage(err.message || 'Erreur lors de la modification.');
     } finally {
@@ -194,7 +201,7 @@ export default function ManageBookingPage() {
                 <p className="text-sm text-gray-500">{isEnglish ? 'Location' : 'Lieu'}</p>
                 <p className="font-medium text-gray-900">{isIbc ? organizer?.venue_name || 'RAI Amsterdam' : siteConfig.showroom.name}</p>
                 {isIbc ? (
-                  <p className="text-sm text-gray-600">{organizer?.venue_location || 'Amsterdam, the Netherlands'} · {isEnglish ? 'Booth' : 'Stand'} {organizer?.booth || '7.D33'}</p>
+                  <p className="text-sm text-gray-600">{organizer?.venue_location || 'Amsterdam, the Netherlands'} · Hall 7 · {isEnglish ? 'Booth' : 'Stand'} D33</p>
                 ) : (
                   <>
                     <p className="text-sm text-gray-600">{siteConfig.showroom.address.street}</p>

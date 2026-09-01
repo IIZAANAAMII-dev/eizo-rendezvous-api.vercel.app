@@ -7,6 +7,16 @@ interface RequestedProduct {
   title?: string;
   handle?: string;
   url?: string;
+  language?: 'fr' | 'en';
+  modification?: {
+    previousDate: string;
+    previousTime: string;
+    previousEndTime: string;
+    previousStatus: string;
+    newDate: string;
+    newTime: string;
+    newEndTime: string;
+  };
 }
 
 interface ViewedProduct {
@@ -319,7 +329,7 @@ function isIbcBooking(data: BookingEmailData): boolean {
 
 function buildIbcEmail(data: BookingEmailData, kind: IbcEmailKind): string {
   const en = data.language === 'en';
-  const venue = `${data.venueName || 'RAI Amsterdam'} · ${data.venueLocation || 'Amsterdam, the Netherlands'} · ${en ? 'Booth' : 'Stand'} ${data.booth || '7.D33'}`;
+  const venue = `${data.venueName || 'RAI Amsterdam'} · ${data.venueLocation || 'Amsterdam, the Netherlands'} · Hall 7 · ${en ? 'Booth' : 'Stand'} D33`;
   const date = new Date(`${data.date}T12:00:00`).toLocaleDateString(en ? 'en-GB' : 'fr-FR', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   });
@@ -338,18 +348,39 @@ function buildIbcEmail(data: BookingEmailData, kind: IbcEmailKind): string {
     organizer: { title: 'Nouvelle demande de rendez-vous IBC 2026', intro: `${escapeHtml(data.customerName)} vient d’envoyer une nouvelle demande de rendez-vous.`, status: 'Utilisez les actions ci-dessous pour accepter ou refuser cette demande.' },
     'organizer-cancelled': { title: 'Rendez-vous IBC 2026 annulé', intro: `${escapeHtml(data.customerName)} a annulé son rendez-vous.`, status: 'Ce créneau est de nouveau disponible.' },
   };
-  const message = messages[kind];
+  let message = messages[kind];
+  const modification = data.requestedProduct?.modification;
+  if (modification) {
+    const modificationMessages = en ? {
+      request: { title: 'Appointment change received', intro: `Hello ${escapeHtml(data.customerName)}, your appointment change has been submitted and is awaiting approval.`, status: 'Your original appointment remains valid until the change is approved.' },
+      organizer: { title: 'IBC 2026 appointment change request', intro: `${escapeHtml(data.customerName)} has requested a new appointment time.`, status: 'Please review the previous and requested times before responding.' },
+      confirmed: { title: 'Your appointment change has been accepted', intro: `Hello ${escapeHtml(data.customerName)}, your new IBC 2026 appointment time is confirmed.`, status: 'Your calendar can now be updated with the new time.' },
+      declined: { title: 'Your appointment change was not accepted', intro: `Hello ${escapeHtml(data.customerName)}, unfortunately your requested change could not be accepted.`, status: 'Your original appointment remains confirmed. If you cannot attend, you can cancel it from the management link below.' },
+    } : {
+      request: { title: 'Modification de rendez-vous reçue', intro: `Bonjour ${escapeHtml(data.customerName)}, votre modification de rendez-vous est en attente de validation.`, status: 'Votre rendez-vous initial reste valable tant que la modification n’est pas acceptée.' },
+      organizer: { title: 'Demande de modification IBC 2026', intro: `${escapeHtml(data.customerName)} souhaite modifier son créneau.`, status: 'Vérifiez l’ancien et le nouveau créneau avant de répondre.' },
+      confirmed: { title: 'Votre modification de rendez-vous a été acceptée', intro: `Bonjour ${escapeHtml(data.customerName)}, votre nouveau créneau IBC 2026 est confirmé.`, status: 'Vous pouvez maintenant mettre à jour votre calendrier avec le nouvel horaire.' },
+      declined: { title: 'Votre modification de rendez-vous n’a pas été acceptée', intro: `Bonjour ${escapeHtml(data.customerName)}, votre demande de modification n’a malheureusement pas pu être acceptée.`, status: 'Votre rendez-vous initial reste confirmé. En cas d’empêchement, vous pouvez l’annuler depuis le lien de gestion ci-dessous.' },
+    };
+    if (kind === 'request' || kind === 'organizer' || kind === 'confirmed' || kind === 'declined') message = modificationMessages[kind];
+  }
   let actions = '';
   if (kind === 'organizer' && data.confirmationUrl && data.declineUrl) {
     actions = `<div style="margin:28px 0 8px;text-align:center;"><a href="${escapeHtml(data.confirmationUrl)}" style="display:inline-block;margin:4px;background:#0066CC;color:#fff;padding:13px 22px;border-radius:9px;text-decoration:none;font-weight:700;">${en ? 'Accept' : 'Accepter'}</a><a href="${escapeHtml(data.declineUrl)}" style="display:inline-block;margin:4px;background:#eef2f6;color:#344054;padding:13px 22px;border-radius:9px;text-decoration:none;font-weight:700;">${en ? 'Decline' : 'Refuser'}</a></div>`;
   }
+  if (kind === 'declined' && modification && data.managementToken) {
+    const manageUrl = `${siteConfig.appUrl}/manage/${data.managementToken}`;
+    actions = `<p style="text-align:center;margin:24px 0 0;"><a href="${manageUrl}" style="display:inline-block;background:#0066CC;color:#fff;padding:13px 22px;border-radius:9px;text-decoration:none;font-weight:700;">${en ? 'Manage or cancel my appointment' : 'Gérer ou annuler mon rendez-vous'}</a></p>`;
+  }
   if (kind === 'confirmed' && data.managementToken) {
-    const location = `${data.venueName || 'RAI Amsterdam'}, ${data.venueLocation || 'Amsterdam, the Netherlands'}, ${en ? 'Booth' : 'Stand'} ${data.booth || '7.D33'}`;
+    const location = `${data.venueName || 'RAI Amsterdam'}, ${data.venueLocation || 'Amsterdam, the Netherlands'}, Hall 7 · ${en ? 'Booth' : 'Stand'} D33`;
     const googleUrl = buildGoogleCalendarUrl({ title: `EIZO at IBC 2026 — ${data.customerName}`, startDate: data.date, startTime: data.time, endDate: data.date, endTime: data.endTime || data.time, location, description: `${en ? 'Appointment with the EIZO team at IBC 2026' : 'Rendez-vous avec l’équipe EIZO à IBC 2026'}\n${location}` });
     const icsUrl = `${siteConfig.appUrl}/api/public/calendar/ics?token=${data.managementToken}&role=client`;
     const manageUrl = `${siteConfig.appUrl}/manage/${data.managementToken}`;
     actions = `<div style="margin:28px 0 8px;text-align:center;"><a href="${googleUrl}" style="display:inline-block;margin:4px;background:#0066CC;color:#fff;padding:13px 22px;border-radius:9px;text-decoration:none;font-weight:700;">${en ? 'Add to Google Calendar' : 'Ajouter à Google Agenda'}</a><a href="${icsUrl}" style="display:inline-block;margin:4px;background:#eef2f6;color:#064b8e;padding:13px 22px;border-radius:9px;text-decoration:none;font-weight:700;">${en ? 'Add to Outlook (.ics)' : 'Ajouter à Outlook (.ics)'}</a></div><p style="text-align:center;margin:18px 0 0;"><a href="${manageUrl}" style="color:#0066CC;font-weight:700;text-decoration:none;">${en ? 'Change or cancel my appointment' : 'Modifier ou annuler mon rendez-vous'}</a></p>`;
   }
+
+  const modificationRows = modification ? `${detailRow(en ? 'Previous time' : 'Ancien créneau', `${escapeHtml(modification.previousDate)} · ${escapeHtml(formatTime(modification.previousTime, modification.previousEndTime))}`)}${detailRow(en ? 'Requested time' : 'Nouveau créneau', `${escapeHtml(modification.newDate)} · ${escapeHtml(formatTime(modification.newTime, modification.newEndTime))}`)}` : '';
 
   return `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f2f5f9;padding:40px 16px;">
     <div style="max-width:620px;margin:0 auto;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 12px 40px rgba(15,23,42,.08);">
@@ -364,6 +395,7 @@ function buildIbcEmail(data: BookingEmailData, kind: IbcEmailKind): string {
           ${detailRow(en ? 'Date' : 'Date', escapeHtml(date))}
           ${detailRow(en ? 'Time' : 'Heure', escapeHtml(formatTime(data.time, data.endTime)))}
           ${detailRow(en ? 'Location' : 'Lieu', escapeHtml(venue))}
+          ${modificationRows}
           ${kind.startsWith('organizer') ? detailRow(en ? 'Customer' : 'Client', escapeHtml(data.customerName)) : ''}
           ${kind.startsWith('organizer') ? detailRow('Email', `<a href="mailto:${escapeHtml(data.customerEmail)}" style="color:#0066CC;text-decoration:none;">${escapeHtml(data.customerEmail)}</a>`) : ''}
           ${data.customerPhone ? detailRow(en ? 'Phone' : 'Téléphone', escapeHtml(data.customerPhone)) : ''}
@@ -378,6 +410,20 @@ function buildIbcEmail(data: BookingEmailData, kind: IbcEmailKind): string {
 
 function ibcSubject(data: BookingEmailData, kind: IbcEmailKind): string {
   const en = data.language === 'en';
+  if (data.requestedProduct?.modification) {
+    const modificationSubjects = en ? {
+      request: 'Your IBC 2026 appointment change is awaiting approval',
+      organizer: `IBC 2026 appointment change — ${data.customerName}`,
+      confirmed: 'Your IBC 2026 appointment change has been accepted',
+      declined: 'Your IBC 2026 appointment change was not accepted',
+    } : {
+      request: 'Votre modification IBC 2026 est en attente de validation',
+      organizer: `Modification de rendez-vous IBC 2026 — ${data.customerName}`,
+      confirmed: 'Votre modification de rendez-vous IBC 2026 a été acceptée',
+      declined: 'Votre modification de rendez-vous IBC 2026 n’a pas été acceptée',
+    };
+    if (kind === 'request' || kind === 'organizer' || kind === 'confirmed' || kind === 'declined') return modificationSubjects[kind];
+  }
   const subjects: Record<IbcEmailKind, string> = en ? {
     request: 'Your IBC 2026 appointment request has been received',
     confirmed: 'Your IBC 2026 appointment is confirmed',

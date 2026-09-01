@@ -175,6 +175,18 @@ export async function PATCH(
           confirmed_at: null,
           refused_at: null,
           cancelled_at: null,
+          requested_product: {
+            ...(booking.requested_product || {}),
+            modification: {
+              previousDate: booking.date,
+              previousTime: booking.start_time,
+              previousEndTime: booking.end_time,
+              previousStatus: booking.status,
+              newDate: date,
+              newTime: `${normalizedTime}:00`,
+              newEndTime: `${endTime}:00`,
+            },
+          },
         })
         .eq('id', booking.id)
         .select()

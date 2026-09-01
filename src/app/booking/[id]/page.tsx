@@ -122,13 +122,13 @@ export default function BookingCalendarPage() {
   useEffect(() => {
     if (params.id !== 'ibc-2026' || Object.keys(monthSlots).length === 0 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const animation = gsap.fromTo('.ibc-day-card', { opacity: 0, y: 20, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.65, stagger: 0.14, ease: 'power3.out' });
-    return () => animation.kill();
+    return () => { animation.kill(); };
   }, [monthSlots, params.id]);
 
   useEffect(() => {
     if (params.id !== 'ibc-2026' || availableDays.length === 0 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const animation = gsap.fromTo('.ibc-slot-card', { opacity: 0, y: 14, scale: 0.97 }, { opacity: 1, y: 0, scale: 1, duration: 0.55, stagger: 0.08, ease: 'power2.out' });
-    return () => animation.kill();
+    return () => { animation.kill(); };
   }, [availableDays, params.id]);
 
   const getInitials = (name: string) => {

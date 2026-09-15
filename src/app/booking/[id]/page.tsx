@@ -265,6 +265,8 @@ export default function BookingCalendarPage() {
     ? `${new Date(`${eventStartDate}T12:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'long' })} – ${new Date(`${eventEndDate}T12:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })}`
     : null;
   const eventDays = isIbc ? [11, 12, 13, 14].map(day => new Date(2026, 8, day)) : [];
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
   const exhibits = organizer.description?.split('|').filter(Boolean) || [];
 
   return (
@@ -386,7 +388,8 @@ export default function BookingCalendarPage() {
                     <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                       {eventDays.map((date) => {
                         const dateStr = formatLocalDate(date);
-                        const hasAvailable = (monthSlots[dateStr] || []).some(slot => slot.available);
+                        const isPast = date < todayStart;
+                        const hasAvailable = !isPast && (monthSlots[dateStr] || []).some(slot => slot.available);
                         const isSelected = selectedDate?.toDateString() === date.toDateString();
                         return (
                           <button

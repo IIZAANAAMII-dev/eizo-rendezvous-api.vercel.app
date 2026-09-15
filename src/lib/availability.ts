@@ -12,6 +12,41 @@ export function timeToMinutes(time: string): number {
   return hours * 60 + minutes;
 }
 
+export function todayString(timezone?: string | null): string {
+  try {
+    if (timezone) {
+      return new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(new Date());
+    }
+  } catch {
+    // timezone invalide : fallback sur la date locale du serveur
+  }
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+export function timeNowString(timezone?: string | null): string {
+  try {
+    if (timezone) {
+      const formatted = new Intl.DateTimeFormat('en-GB', {
+        timeZone: timezone,
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).format(new Date());
+      return formatted.startsWith('24:') ? `00:${formatted.slice(3)}` : formatted;
+    }
+  } catch {
+    // timezone invalide : fallback sur l'heure locale du serveur
+  }
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+}
+
 export function minutesToTime(minutes: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
@@ -28,7 +63,7 @@ export function generateSlotsForDate(
     return [];
   }
 
-  const dateObj = new Date(date);
+  const dateObj = new Date(`${date}T12:00:00`);
   const dayOfWeek = dateObj.getDay();
   const workingSlots = organizer.working_days?.[dayOfWeek] || [];
 
@@ -53,7 +88,7 @@ export function generateSlotsForDate(
 }
 
 export function getWorkingRangesForDate(date: string, organizer: Organizer): string {
-  const dateObj = new Date(date);
+  const dateObj = new Date(`${date}T12:00:00`);
   const dayOfWeek = dateObj.getDay();
   const workingSlots = organizer.working_days?.[dayOfWeek] || [];
 

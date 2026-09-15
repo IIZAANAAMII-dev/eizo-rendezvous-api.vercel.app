@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/lib/supabase';
-import { generateSlotsForDate } from '@/lib/availability';
+import { generateSlotsForDate, todayString, timeNowString } from '@/lib/availability';
 import { handleCors, withCors } from '@/lib/cors';
 
 function pad(n: number) {
@@ -41,9 +41,19 @@ export async function GET(
       return withCors(NextResponse.json({ error: 'Failed to fetch organizer' }, { status: 500 }), request);
     }
 
+    const today = todayString(organizer.timezone);
+    const nowTime = timeNowString(organizer.timezone);
+
     const isOutsideEventDates = (value: string) =>
       (organizer.event_start_date && value < organizer.event_start_date) ||
       (organizer.event_end_date && value > organizer.event_end_date);
+
+    // Une date passée n'a plus aucun créneau réservable ; pour aujourd'hui,
+    // les horaires déjà échus sont marqués indisponibles.
+    const filterSlots = (value: string, slots: any[]) =>
+      value === today
+        ? slots.map(s => ({ ...s, available: s.available && s.start.slice(0, 5) > nowTime }))
+        : slots;
 
     // Préparation des working_days pour chaque jour de la semaine
     const { data: availabilities, error: availabilityError } = await supabase
@@ -128,20 +138,20 @@ export async function GET(
       for (let d = 1; d <= lastDay.getDate(); d++) {
         const ds = `${y}-${pad(m)}-${pad(d)}`;
         const bookedStartTimes = bookingsByDate[ds] || [];
-        dates[ds] = isOutsideEventDates(ds)
+        dates[ds] = ds < today || isOutsideEventDates(ds)
           ? []
-          : generateSlotsForDate(ds, enrichedOrganizer, bookedStartTimes, unavailableDates);
+          : filterSlots(ds, generateSlotsForDate(ds, enrichedOrganizer, bookedStartTimes, unavailableDates));
       }
 
       return withCors(NextResponse.json({ dates, month, workingDays: Object.keys(workingDays) }), request);
     }
 
     // Sinon, un seul jour
-    if (isOutsideEventDates(date!)) {
+    if (date! < today || isOutsideEventDates(date!)) {
       return withCors(NextResponse.json({ slots: [] }), request);
     }
 
-    const dayOfWeek = new Date(date!).getDay();
+    const dayOfWeek = new Date(`${date}T12:00:00`).getDay();
     const daySlots = workingDays[dayOfWeek] || [];
 
     // Récupérer les créneaux déjà réservés pour cette date
@@ -163,7 +173,7 @@ export async function GET(
     }
 
     const bookedStartTimes = bookings.map((b: any) => b.start_time.slice(0, 8));
-    const slots = generateSlotsForDate(date!, enrichedOrganizer, bookedStartTimes, unavailableDates);
+    const slots = filterSlots(date!, generateSlotsForDate(date!, enrichedOrganizer, bookedStartTimes, unavailableDates));
 
     return withCors(NextResponse.json({ slots }), request);
   } catch (error) {

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { getSupabaseClient } from '@/lib/supabase';
-import { timeToMinutes, minutesToTime } from '@/lib/availability';
+import { timeToMinutes, minutesToTime, todayString, timeNowString } from '@/lib/availability';
 import { sendConfirmationEmail, sendOrganizerNotification } from '@/lib/email';
 import { getExpertEmail, siteConfig } from '@/lib/config';
 import { handleCors, withCors } from '@/lib/cors';
@@ -134,6 +134,49 @@ export async function POST(request: NextRequest) {
       (organizer.event_end_date && date > organizer.event_end_date)
     ) {
       return withCors(NextResponse.json({ error: 'Cette date n’est pas disponible pour cet événement.' }, { status: 400 }), request);
+    }
+
+    const today = todayString(organizer.timezone);
+    if (date < today) {
+      return withCors(NextResponse.json({ error: 'Cette date n’est plus disponible.' }, { status: 400 }), request);
+    }
+    if (date === today && normalizedTime <= timeNowString(organizer.timezone)) {
+      return withCors(NextResponse.json({ error: 'Ce créneau n\'est plus disponible' }, { status: 409 }), request);
+    }
+
+    // Vérifie que la date n'est pas bloquée et que l'horaire demandé
+    // correspond bien à un créneau de disponibilité de l'organisateur.
+    const dayOfWeek = new Date(`${date}T12:00:00`).getDay();
+    const [{ data: dayAvailabilities, error: availError }, { data: exceptions, error: exceptionsError }] = await Promise.all([
+      supabase
+        .from('availability')
+        .select('id, availability_slots(start_time)')
+        .eq('organizer_id', organizer.id)
+        .eq('day_of_week', dayOfWeek)
+        .eq('is_available', true),
+      supabase
+        .from('availability_exceptions')
+        .select('date')
+        .eq('organizer_id', organizer.id)
+        .eq('date', date),
+    ]);
+
+    if (availError || exceptionsError) {
+      console.error('[public booking] availability check error:', availError || exceptionsError);
+      return withCors(NextResponse.json({ error: 'Failed to check availability' }, { status: 500 }), request);
+    }
+
+    if (exceptions && exceptions.length > 0) {
+      return withCors(NextResponse.json({ error: 'Cette date n’est pas disponible.' }, { status: 400 }), request);
+    }
+
+    const validStartTimes = new Set(
+      (dayAvailabilities || []).flatMap((av: any) =>
+        (av.availability_slots || []).map((s: any) => s.start_time.slice(0, 5))
+      )
+    );
+    if (!validStartTimes.has(normalizedTime)) {
+      return withCors(NextResponse.json({ error: 'Ce créneau n\'est plus disponible' }, { status: 409 }), request);
     }
 
     const { data: existingBooking, error: checkError } = await supabase

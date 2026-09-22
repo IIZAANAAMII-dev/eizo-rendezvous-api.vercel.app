@@ -52,7 +52,12 @@ export interface BookingEmailData {
   language?: 'fr' | 'en';
   venueName?: string;
   venueLocation?: string;
+  hall?: string;
   booth?: string;
+  isEvent?: boolean;
+  eventName?: string;
+  eventStartDate?: string;
+  eventEndDate?: string;
 }
 
 const accentBlue = siteConfig.brand.color;
@@ -321,45 +326,68 @@ function buildOrganizerEmailBody(data: BookingEmailData): string {
   return emailWrapper(body);
 }
 
-type IbcEmailKind = 'request' | 'confirmed' | 'declined' | 'cancelled' | 'organizer' | 'organizer-cancelled';
+type EventEmailKind = 'request' | 'confirmed' | 'declined' | 'cancelled' | 'organizer' | 'organizer-cancelled';
 
-function isIbcBooking(data: BookingEmailData): boolean {
-  return data.organizerSlug === 'ibc-2026';
+function isEventBooking(data: BookingEmailData): boolean {
+  return Boolean(data.isEvent) || data.organizerSlug === 'ibc-2026';
 }
 
-function buildIbcEmail(data: BookingEmailData, kind: IbcEmailKind): string {
+function eventRangeLabel(data: BookingEmailData, en: boolean): string {
+  if (!data.eventStartDate || !data.eventEndDate) return '';
+  const locale = en ? 'en-GB' : 'fr-FR';
+  const start = new Date(`${data.eventStartDate}T12:00:00`);
+  const end = new Date(`${data.eventEndDate}T12:00:00`);
+  if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
+    return en
+      ? `${start.toLocaleDateString(locale, { month: 'long' })} ${start.getDate()}–${end.getDate()}`
+      : `${start.getDate()}–${end.getDate()} ${start.toLocaleDateString(locale, { month: 'long' })}`;
+  }
+  return `${start.toLocaleDateString(locale, { day: 'numeric', month: 'long' })} – ${end.toLocaleDateString(locale, { day: 'numeric', month: 'long' })}`;
+}
+
+function eventVenueLabel(data: BookingEmailData, en: boolean): string {
+  return [
+    data.venueName,
+    data.venueLocation,
+    data.hall ? `Hall ${data.hall}` : null,
+    data.booth ? `${en ? 'Booth' : 'Stand'} ${data.booth}` : null,
+  ].filter(Boolean).join(' · ');
+}
+
+function buildEventEmail(data: BookingEmailData, kind: EventEmailKind): string {
   const en = data.language === 'en';
-  const venue = `${data.venueName || 'RAI Amsterdam'} · ${data.venueLocation || 'Amsterdam, the Netherlands'} · Hall 7 · ${en ? 'Booth' : 'Stand'} D33`;
+  const eventName = data.eventName || 'EIZO';
+  const venue = eventVenueLabel(data, en);
   const date = new Date(`${data.date}T12:00:00`).toLocaleDateString(en ? 'en-GB' : 'fr-FR', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   });
-  const messages: Record<IbcEmailKind, { title: string; intro: string; status: string }> = en ? {
-    request: { title: 'Appointment request received', intro: `Hello ${escapeHtml(data.customerName)}, your appointment request for IBC 2026 has been received.`, status: 'Our EIZO team will confirm your appointment shortly.' },
-    confirmed: { title: 'Your IBC 2026 appointment is confirmed', intro: `Hello ${escapeHtml(data.customerName)}, your appointment with the EIZO team is confirmed.`, status: 'We look forward to welcoming you at IBC 2026.' },
-    declined: { title: 'IBC 2026 appointment update', intro: `Hello ${escapeHtml(data.customerName)}, unfortunately the requested time is no longer available.`, status: 'Please contact our team if you need assistance.' },
-    cancelled: { title: 'Your IBC 2026 appointment has been cancelled', intro: `Hello ${escapeHtml(data.customerName)}, your appointment has been cancelled.`, status: 'We hope to see you at another time during IBC 2026.' },
-    organizer: { title: 'New IBC 2026 appointment request', intro: `A new appointment request has been submitted by ${escapeHtml(data.customerName)}.`, status: 'Use the actions below to accept or decline this request.' },
-    'organizer-cancelled': { title: 'IBC 2026 appointment cancelled', intro: `${escapeHtml(data.customerName)} has cancelled their appointment.`, status: 'This time is now available again.' },
+  const messages: Record<EventEmailKind, { title: string; intro: string; status: string }> = en ? {
+    request: { title: 'Appointment request received', intro: `Hello ${escapeHtml(data.customerName)}, your appointment request for ${eventName} has been received.`, status: 'Our EIZO team will confirm your appointment shortly.' },
+    confirmed: { title: `Your ${eventName} appointment is confirmed`, intro: `Hello ${escapeHtml(data.customerName)}, your appointment with the EIZO team is confirmed.`, status: `We look forward to welcoming you at ${eventName}.` },
+    declined: { title: `${eventName} appointment update`, intro: `Hello ${escapeHtml(data.customerName)}, unfortunately the requested time is no longer available.`, status: 'Please contact our team if you need assistance.' },
+    cancelled: { title: `Your ${eventName} appointment has been cancelled`, intro: `Hello ${escapeHtml(data.customerName)}, your appointment has been cancelled.`, status: `We hope to see you at another time during ${eventName}.` },
+    organizer: { title: `New ${eventName} appointment request`, intro: `A new appointment request has been submitted by ${escapeHtml(data.customerName)}.`, status: 'Use the actions below to accept or decline this request.' },
+    'organizer-cancelled': { title: `${eventName} appointment cancelled`, intro: `${escapeHtml(data.customerName)} has cancelled their appointment.`, status: 'This time is now available again.' },
   } : {
-    request: { title: 'Demande de rendez-vous reçue', intro: `Bonjour ${escapeHtml(data.customerName)}, votre demande de rendez-vous pour IBC 2026 a bien été reçue.`, status: 'Notre équipe EIZO confirmera prochainement votre rendez-vous.' },
-    confirmed: { title: 'Votre rendez-vous IBC 2026 est confirmé', intro: `Bonjour ${escapeHtml(data.customerName)}, votre rendez-vous avec l’équipe EIZO est confirmé.`, status: 'Nous avons hâte de vous accueillir à IBC 2026.' },
-    declined: { title: 'Mise à jour de votre rendez-vous IBC 2026', intro: `Bonjour ${escapeHtml(data.customerName)}, le créneau demandé n’est malheureusement plus disponible.`, status: 'Contactez notre équipe si vous avez besoin d’aide.' },
-    cancelled: { title: 'Votre rendez-vous IBC 2026 a été annulé', intro: `Bonjour ${escapeHtml(data.customerName)}, votre rendez-vous a bien été annulé.`, status: 'Nous espérons vous rencontrer à un autre moment pendant IBC 2026.' },
-    organizer: { title: 'Nouvelle demande de rendez-vous IBC 2026', intro: `${escapeHtml(data.customerName)} vient d’envoyer une nouvelle demande de rendez-vous.`, status: 'Utilisez les actions ci-dessous pour accepter ou refuser cette demande.' },
-    'organizer-cancelled': { title: 'Rendez-vous IBC 2026 annulé', intro: `${escapeHtml(data.customerName)} a annulé son rendez-vous.`, status: 'Ce créneau est de nouveau disponible.' },
+    request: { title: 'Demande de rendez-vous reçue', intro: `Bonjour ${escapeHtml(data.customerName)}, votre demande de rendez-vous pour ${eventName} a bien été reçue.`, status: 'Notre équipe EIZO confirmera prochainement votre rendez-vous.' },
+    confirmed: { title: `Votre rendez-vous ${eventName} est confirmé`, intro: `Bonjour ${escapeHtml(data.customerName)}, votre rendez-vous avec l’équipe EIZO est confirmé.`, status: `Nous avons hâte de vous accueillir à ${eventName}.` },
+    declined: { title: `Mise à jour de votre rendez-vous ${eventName}`, intro: `Bonjour ${escapeHtml(data.customerName)}, le créneau demandé n’est malheureusement plus disponible.`, status: 'Contactez notre équipe si vous avez besoin d’aide.' },
+    cancelled: { title: `Votre rendez-vous ${eventName} a été annulé`, intro: `Bonjour ${escapeHtml(data.customerName)}, votre rendez-vous a bien été annulé.`, status: `Nous espérons vous rencontrer à un autre moment pendant ${eventName}.` },
+    organizer: { title: `Nouvelle demande de rendez-vous ${eventName}`, intro: `${escapeHtml(data.customerName)} vient d’envoyer une nouvelle demande de rendez-vous.`, status: 'Utilisez les actions ci-dessous pour accepter ou refuser cette demande.' },
+    'organizer-cancelled': { title: `Rendez-vous ${eventName} annulé`, intro: `${escapeHtml(data.customerName)} a annulé son rendez-vous.`, status: 'Ce créneau est de nouveau disponible.' },
   };
   let message = messages[kind];
   const modification = data.requestedProduct?.modification;
   if (modification) {
     const modificationMessages = en ? {
       request: { title: 'Appointment change received', intro: `Hello ${escapeHtml(data.customerName)}, your appointment change has been submitted and is awaiting approval.`, status: 'Your original appointment remains valid until the change is approved.' },
-      organizer: { title: 'IBC 2026 appointment change request', intro: `${escapeHtml(data.customerName)} has requested a new appointment time.`, status: 'Please review the previous and requested times before responding.' },
-      confirmed: { title: 'Your appointment change has been accepted', intro: `Hello ${escapeHtml(data.customerName)}, your new IBC 2026 appointment time is confirmed.`, status: 'Your calendar can now be updated with the new time.' },
+      organizer: { title: `${eventName} appointment change request`, intro: `${escapeHtml(data.customerName)} has requested a new appointment time.`, status: 'Please review the previous and requested times before responding.' },
+      confirmed: { title: 'Your appointment change has been accepted', intro: `Hello ${escapeHtml(data.customerName)}, your new ${eventName} appointment time is confirmed.`, status: 'Your calendar can now be updated with the new time.' },
       declined: { title: 'Your appointment change was not accepted', intro: `Hello ${escapeHtml(data.customerName)}, unfortunately your requested change could not be accepted.`, status: 'Your original appointment remains confirmed. If you cannot attend, you can cancel it from the management link below.' },
     } : {
       request: { title: 'Modification de rendez-vous reçue', intro: `Bonjour ${escapeHtml(data.customerName)}, votre modification de rendez-vous est en attente de validation.`, status: 'Votre rendez-vous initial reste valable tant que la modification n’est pas acceptée.' },
-      organizer: { title: 'Demande de modification IBC 2026', intro: `${escapeHtml(data.customerName)} souhaite modifier son créneau.`, status: 'Vérifiez l’ancien et le nouveau créneau avant de répondre.' },
-      confirmed: { title: 'Votre modification de rendez-vous a été acceptée', intro: `Bonjour ${escapeHtml(data.customerName)}, votre nouveau créneau IBC 2026 est confirmé.`, status: 'Vous pouvez maintenant mettre à jour votre calendrier avec le nouvel horaire.' },
+      organizer: { title: `Demande de modification ${eventName}`, intro: `${escapeHtml(data.customerName)} souhaite modifier son créneau.`, status: 'Vérifiez l’ancien et le nouveau créneau avant de répondre.' },
+      confirmed: { title: 'Votre modification de rendez-vous a été acceptée', intro: `Bonjour ${escapeHtml(data.customerName)}, votre nouveau créneau ${eventName} est confirmé.`, status: 'Vous pouvez maintenant mettre à jour votre calendrier avec le nouvel horaire.' },
       declined: { title: 'Votre modification de rendez-vous n’a pas été acceptée', intro: `Bonjour ${escapeHtml(data.customerName)}, votre demande de modification n’a malheureusement pas pu être acceptée.`, status: 'Votre rendez-vous initial reste confirmé. En cas d’empêchement, vous pouvez l’annuler depuis le lien de gestion ci-dessous.' },
     };
     if (kind === 'request' || kind === 'organizer' || kind === 'confirmed' || kind === 'declined') message = modificationMessages[kind];
@@ -373,8 +401,8 @@ function buildIbcEmail(data: BookingEmailData, kind: IbcEmailKind): string {
     actions = `<p style="text-align:center;margin:24px 0 0;"><a href="${manageUrl}" style="display:inline-block;background:#0066CC;color:#fff;padding:13px 22px;border-radius:9px;text-decoration:none;font-weight:700;">${en ? 'Manage or cancel my appointment' : 'Gérer ou annuler mon rendez-vous'}</a></p>`;
   }
   if (kind === 'confirmed' && data.managementToken) {
-    const location = `${data.venueName || 'RAI Amsterdam'}, ${data.venueLocation || 'Amsterdam, the Netherlands'}, Hall 7 · ${en ? 'Booth' : 'Stand'} D33`;
-    const googleUrl = buildGoogleCalendarUrl({ title: `EIZO at IBC 2026 — ${data.customerName}`, startDate: data.date, startTime: data.time, endDate: data.date, endTime: data.endTime || data.time, location, description: `${en ? 'Appointment with the EIZO team at IBC 2026' : 'Rendez-vous avec l’équipe EIZO à IBC 2026'}\n${location}` });
+    const location = venue;
+    const googleUrl = buildGoogleCalendarUrl({ title: `EIZO at ${eventName} — ${data.customerName}`, startDate: data.date, startTime: data.time, endDate: data.date, endTime: data.endTime || data.time, location, description: `${en ? `Appointment with the EIZO team at ${eventName}` : `Rendez-vous avec l’équipe EIZO à ${eventName}`}\n${location}` });
     const icsUrl = `${siteConfig.appUrl}/api/public/calendar/ics?token=${data.managementToken}&role=client`;
     const manageUrl = `${siteConfig.appUrl}/manage/${data.managementToken}`;
     actions = `<div style="margin:28px 0 8px;text-align:center;"><a href="${googleUrl}" style="display:inline-block;margin:4px;background:#0066CC;color:#fff;padding:13px 22px;border-radius:9px;text-decoration:none;font-weight:700;">${en ? 'Add to Google Calendar' : 'Ajouter à Google Agenda'}</a><a href="${icsUrl}" style="display:inline-block;margin:4px;background:#eef2f6;color:#064b8e;padding:13px 22px;border-radius:9px;text-decoration:none;font-weight:700;">${en ? 'Add to Outlook (.ics)' : 'Ajouter à Outlook (.ics)'}</a></div><p style="text-align:center;margin:18px 0 0;"><a href="${manageUrl}" style="color:#0066CC;font-weight:700;text-decoration:none;">${en ? 'Change or cancel my appointment' : 'Modifier ou annuler mon rendez-vous'}</a></p>`;
@@ -388,7 +416,7 @@ function buildIbcEmail(data: BookingEmailData, kind: IbcEmailKind): string {
         <img src="https://eizo.fr/cdn/shop/files/EIZO-Logo_RGB.png?v=1732704479&amp;width=310" alt="EIZO" style="display:block;width:120px;height:auto;">
       </div>
       <div style="padding:34px 32px;">
-        <p style="margin:0 0 8px;color:#0066CC;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;">IBC 2026 · September 11–14</p>
+        <p style="margin:0 0 8px;color:#0066CC;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;">${eventName}${eventRangeLabel(data, en) ? ` · ${eventRangeLabel(data, en)}` : ''}</p>
         <h1 style="margin:0 0 18px;color:#101828;font-size:26px;line-height:1.25;">${message.title}</h1>
         <p style="margin:0 0 26px;color:#475467;font-size:15px;line-height:1.65;">${message.intro}</p>
         <table style="width:100%;border-collapse:collapse;background:#f8fafc;border-radius:12px;padding:18px;display:table;">
@@ -408,43 +436,44 @@ function buildIbcEmail(data: BookingEmailData, kind: IbcEmailKind): string {
   </div>`;
 }
 
-function ibcSubject(data: BookingEmailData, kind: IbcEmailKind): string {
+function eventSubject(data: BookingEmailData, kind: EventEmailKind): string {
   const en = data.language === 'en';
+  const eventName = data.eventName || 'EIZO';
   if (data.requestedProduct?.modification) {
     const modificationSubjects = en ? {
-      request: 'Your IBC 2026 appointment change is awaiting approval',
-      organizer: `IBC 2026 appointment change — ${data.customerName}`,
-      confirmed: 'Your IBC 2026 appointment change has been accepted',
-      declined: 'Your IBC 2026 appointment change was not accepted',
+      request: `Your ${eventName} appointment change is awaiting approval`,
+      organizer: `${eventName} appointment change — ${data.customerName}`,
+      confirmed: `Your ${eventName} appointment change has been accepted`,
+      declined: `Your ${eventName} appointment change was not accepted`,
     } : {
-      request: 'Votre modification IBC 2026 est en attente de validation',
-      organizer: `Modification de rendez-vous IBC 2026 — ${data.customerName}`,
-      confirmed: 'Votre modification de rendez-vous IBC 2026 a été acceptée',
-      declined: 'Votre modification de rendez-vous IBC 2026 n’a pas été acceptée',
+      request: `Votre modification ${eventName} est en attente de validation`,
+      organizer: `Modification de rendez-vous ${eventName} — ${data.customerName}`,
+      confirmed: `Votre modification de rendez-vous ${eventName} a été acceptée`,
+      declined: `Votre modification de rendez-vous ${eventName} n’a pas été acceptée`,
     };
     if (kind === 'request' || kind === 'organizer' || kind === 'confirmed' || kind === 'declined') return modificationSubjects[kind];
   }
-  const subjects: Record<IbcEmailKind, string> = en ? {
-    request: 'Your IBC 2026 appointment request has been received',
-    confirmed: 'Your IBC 2026 appointment is confirmed',
-    declined: 'Update regarding your IBC 2026 appointment',
-    cancelled: 'Your IBC 2026 appointment has been cancelled',
-    organizer: `New IBC 2026 appointment request — ${data.customerName}`,
-    'organizer-cancelled': `IBC 2026 appointment cancelled — ${data.customerName}`,
+  const subjects: Record<EventEmailKind, string> = en ? {
+    request: `Your ${eventName} appointment request has been received`,
+    confirmed: `Your ${eventName} appointment is confirmed`,
+    declined: `Update regarding your ${eventName} appointment`,
+    cancelled: `Your ${eventName} appointment has been cancelled`,
+    organizer: `New ${eventName} appointment request — ${data.customerName}`,
+    'organizer-cancelled': `${eventName} appointment cancelled — ${data.customerName}`,
   } : {
-    request: 'Votre demande de rendez-vous IBC 2026 a bien été reçue',
-    confirmed: 'Votre rendez-vous IBC 2026 est confirmé',
-    declined: 'Mise à jour de votre rendez-vous IBC 2026',
-    cancelled: 'Votre rendez-vous IBC 2026 a été annulé',
-    organizer: `Nouvelle demande de rendez-vous IBC 2026 — ${data.customerName}`,
-    'organizer-cancelled': `Rendez-vous IBC 2026 annulé — ${data.customerName}`,
+    request: `Votre demande de rendez-vous ${eventName} a bien été reçue`,
+    confirmed: `Votre rendez-vous ${eventName} est confirmé`,
+    declined: `Mise à jour de votre rendez-vous ${eventName}`,
+    cancelled: `Votre rendez-vous ${eventName} a été annulé`,
+    organizer: `Nouvelle demande de rendez-vous ${eventName} — ${data.customerName}`,
+    'organizer-cancelled': `Rendez-vous ${eventName} annulé — ${data.customerName}`,
   };
   return subjects[kind];
 }
 
 export async function sendConfirmationEmail(data: BookingEmailData): Promise<void> {
-  if (isIbcBooking(data)) {
-    await sendEmail({ to: data.customerEmail, from: siteConfig.emailFrom, subject: ibcSubject(data, 'request'), html: buildIbcEmail(data, 'request') });
+  if (isEventBooking(data)) {
+    await sendEmail({ to: data.customerEmail, from: siteConfig.emailFrom, subject: eventSubject(data, 'request'), html: buildEventEmail(data, 'request'), senderName: 'EIZO Events' });
     return;
   }
   const subject = `Votre demande de rendez-vous avec ${data.organizerName} a bien été reçue`;
@@ -457,8 +486,8 @@ export async function sendConfirmationEmail(data: BookingEmailData): Promise<voi
 }
 
 export async function sendBookingConfirmedEmail(data: BookingEmailData): Promise<void> {
-  if (isIbcBooking(data)) {
-    await sendEmail({ to: data.customerEmail, from: siteConfig.emailFrom, subject: ibcSubject(data, 'confirmed'), html: buildIbcEmail(data, 'confirmed') });
+  if (isEventBooking(data)) {
+    await sendEmail({ to: data.customerEmail, from: siteConfig.emailFrom, subject: eventSubject(data, 'confirmed'), html: buildEventEmail(data, 'confirmed'), senderName: 'EIZO Events' });
     return;
   }
   const subject = `Votre rendez-vous EIZO ColorEdge est confirmé`;
@@ -471,8 +500,8 @@ export async function sendBookingConfirmedEmail(data: BookingEmailData): Promise
 }
 
 export async function sendBookingDeclinedEmail(data: BookingEmailData): Promise<void> {
-  if (isIbcBooking(data)) {
-    await sendEmail({ to: data.customerEmail, from: siteConfig.emailFrom, subject: ibcSubject(data, 'declined'), html: buildIbcEmail(data, 'declined') });
+  if (isEventBooking(data)) {
+    await sendEmail({ to: data.customerEmail, from: siteConfig.emailFrom, subject: eventSubject(data, 'declined'), html: buildEventEmail(data, 'declined'), senderName: 'EIZO Events' });
     return;
   }
   const subject = `Votre rendez-vous EIZO ColorEdge — créneau indisponible`;
@@ -485,8 +514,8 @@ export async function sendBookingDeclinedEmail(data: BookingEmailData): Promise<
 }
 
 export async function sendOrganizerNotification(data: BookingEmailData): Promise<void> {
-  if (isIbcBooking(data)) {
-    await sendEmail({ to: data.organizerEmail, from: siteConfig.emailFrom, subject: ibcSubject(data, 'organizer'), html: buildIbcEmail(data, 'organizer') });
+  if (isEventBooking(data)) {
+    await sendEmail({ to: data.organizerEmail, from: siteConfig.emailFrom, subject: eventSubject(data, 'organizer'), html: buildEventEmail(data, 'organizer'), senderName: 'EIZO Events' });
     return;
   }
   const subject = `Nouvelle demande de démonstration EIZO — ${data.customerName} — ${data.date} à ${data.time}`;
@@ -536,8 +565,8 @@ function buildOrganizerCancelledBody(data: BookingEmailData): string {
 }
 
 export async function sendBookingCancelledEmail(data: BookingEmailData): Promise<void> {
-  if (isIbcBooking(data)) {
-    await sendEmail({ to: data.customerEmail, from: siteConfig.emailFrom, subject: ibcSubject(data, 'cancelled'), html: buildIbcEmail(data, 'cancelled') });
+  if (isEventBooking(data)) {
+    await sendEmail({ to: data.customerEmail, from: siteConfig.emailFrom, subject: eventSubject(data, 'cancelled'), html: buildEventEmail(data, 'cancelled'), senderName: 'EIZO Events' });
     return;
   }
   const subject = `Votre rendez-vous EIZO ColorEdge a été annulé`;
@@ -550,8 +579,8 @@ export async function sendBookingCancelledEmail(data: BookingEmailData): Promise
 }
 
 export async function sendOrganizerCancellationNotification(data: BookingEmailData): Promise<void> {
-  if (isIbcBooking(data)) {
-    await sendEmail({ to: data.organizerEmail, from: siteConfig.emailFrom, subject: ibcSubject(data, 'organizer-cancelled'), html: buildIbcEmail(data, 'organizer-cancelled') });
+  if (isEventBooking(data)) {
+    await sendEmail({ to: data.organizerEmail, from: siteConfig.emailFrom, subject: eventSubject(data, 'organizer-cancelled'), html: buildEventEmail(data, 'organizer-cancelled'), senderName: 'EIZO Events' });
     return;
   }
   const subject = `Annulation de rendez-vous EIZO ColorEdge — ${data.customerName} — ${data.date} à ${data.time}`;
@@ -568,6 +597,7 @@ interface SendEmailPayload {
   from: string;
   subject: string;
   html: string;
+  senderName?: string;
 }
 
 async function sendEmail(payload: SendEmailPayload): Promise<void> {
@@ -599,7 +629,7 @@ async function sendWithSmtp(payload: SendEmailPayload): Promise<void> {
     requireTLS: true,
   });
 
-  const senderName = payload.subject.includes('IBC 2026') ? 'EIZO Events' : 'EIZO ColorEdge';
+  const senderName = payload.senderName || 'EIZO ColorEdge';
   await transporter.sendMail({
     from: { name: senderName, address: process.env.SMTP_USER || payload.from },
     to: payload.to,
@@ -634,7 +664,7 @@ async function sendWithSendgrid(payload: SendEmailPayload): Promise<void> {
     },
     body: JSON.stringify({
       personalizations: [{ to: [{ email: payload.to }] }],
-      from: { email: payload.from, name: payload.subject.includes('IBC 2026') ? 'EIZO Events' : 'EIZO ColorEdge' },
+      from: { email: payload.from, name: payload.senderName || 'EIZO ColorEdge' },
       subject: payload.subject,
       content: [{ type: 'text/html', value: payload.html }],
     }),

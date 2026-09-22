@@ -23,6 +23,7 @@ interface Organizer {
   event_end_date?: string;
   venue_name?: string;
   venue_location?: string;
+  hall?: string;
   booth?: string;
 }
 
@@ -110,24 +111,30 @@ export default function BookingCalendarPage() {
   }, [currentMonth, params.id]);
 
   useEffect(() => {
-    if (params.id !== 'ibc-2026' || selectedDate || Object.keys(monthSlots).length === 0) return;
-    const firstAvailableDate = [11, 12, 13, 14]
-      .map(day => new Date(2026, 8, day))
-      .find(date => (monthSlots[formatLocalDate(date)] || []).some(slot => slot.available));
+    if (!organizer?.event_start_date || !organizer?.event_end_date || selectedDate || Object.keys(monthSlots).length === 0) return;
+    const start = new Date(`${organizer.event_start_date}T12:00:00`);
+    const end = new Date(`${organizer.event_end_date}T12:00:00`);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const days: Date[] = [];
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) days.push(new Date(d));
+    const firstAvailableDate = days.find(date =>
+      date >= today && (monthSlots[formatLocalDate(date)] || []).some(slot => slot.available)
+    );
     if (firstAvailableDate) {
       setSelectedDate(firstAvailableDate);
       fetchAvailableSlots(firstAvailableDate);
     }
-  }, [monthSlots, params.id, selectedDate]);
+  }, [monthSlots, organizer, selectedDate]);
 
   useEffect(() => {
-    if (params.id !== 'ibc-2026' || availableDays.length === 0 || bentoAnimatedRef.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (!organizer?.event_start_date || availableDays.length === 0 || bentoAnimatedRef.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     bentoAnimatedRef.current = true;
     const context = gsap.context(() => {
       gsap.fromTo('.ibc-bento-card', { opacity: 0, y: 28, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.78, stagger: 0.18, ease: 'power3.out' });
     });
     return () => { context.revert(); };
-  }, [availableDays.length, params.id]);
+  }, [availableDays.length, organizer]);
 
   const getInitials = (name: string) => {
     return name
@@ -214,7 +221,7 @@ export default function BookingCalendarPage() {
       });
 
       if (response.ok) {
-        if (isIbc) {
+        if (isEvent) {
           setIsBookingModalOpen(false);
           setBookingSuccess(true);
         } else {
@@ -255,24 +262,49 @@ export default function BookingCalendarPage() {
 
   const days = getDaysInMonth(currentMonth);
   const monthName = currentMonth.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-  const isIbc = params.id === 'ibc-2026';
-  const isEnglish = isIbc && language === 'en';
+  const isEvent = Boolean(organizer.event_start_date && organizer.event_end_date);
+  const eventName = organizer.specialty || 'EIZO';
+  const isEnglish = isEvent && language === 'en';
   const locale = isEnglish ? 'en-GB' : 'fr-FR';
-  const isEvent = isIbc || Boolean(organizer.event_start_date && organizer.event_end_date);
-  const eventStartDate = organizer.event_start_date || (isIbc ? '2026-09-11' : undefined);
-  const eventEndDate = organizer.event_end_date || (isIbc ? '2026-09-14' : undefined);
+  const eventStartDate = organizer.event_start_date;
+  const eventEndDate = organizer.event_end_date;
   const eventDates = eventStartDate && eventEndDate
     ? `${new Date(`${eventStartDate}T12:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'long' })} – ${new Date(`${eventEndDate}T12:00:00`).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })}`
     : null;
-  const eventDays = isIbc ? [11, 12, 13, 14].map(day => new Date(2026, 8, day)) : [];
+  const eventDatesOnly = eventStartDate && eventEndDate
+    ? (() => {
+        const s = new Date(`${eventStartDate}T12:00:00`);
+        const e = new Date(`${eventEndDate}T12:00:00`);
+        if (s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear()) {
+          return isEnglish
+            ? `${s.toLocaleDateString(locale, { month: 'long' })} ${s.getDate()}–${e.getDate()}, ${e.getFullYear()}`
+            : `${s.getDate()} au ${e.getDate()} ${s.toLocaleDateString(locale, { month: 'long', year: 'numeric' })}`;
+        }
+        return `${s.toLocaleDateString(locale, { day: 'numeric', month: 'long' })} ${isEnglish ? 'to' : 'au'} ${e.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })}`;
+      })()
+    : null;
+  const eventDays = (() => {
+    if (!eventStartDate || !eventEndDate) return [];
+    const result: Date[] = [];
+    const start = new Date(`${eventStartDate}T12:00:00`);
+    const end = new Date(`${eventEndDate}T12:00:00`);
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) result.push(new Date(d));
+    return result;
+  })();
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
+  const eventVenueLabel = [
+    organizer.venue_location,
+    organizer.hall ? `Hall ${organizer.hall}` : null,
+    organizer.booth ? `${isEnglish ? 'Booth' : 'Stand'} ${organizer.booth}` : null,
+  ].filter(Boolean).join(' · ');
+  const mapsQuery = encodeURIComponent([organizer.venue_name, organizer.venue_location].filter(Boolean).join(', '));
   const exhibits = organizer.description?.split('|').filter(Boolean) || [];
 
   return (
-    <div className={isIbc ? 'min-h-screen bg-[radial-gradient(circle_at_top_right,_#dbeafe_0,_#f8fafc_38%,_#f1f5f9_100%)]' : 'min-h-screen bg-gradient-to-br from-blue-50 to-white'}>
-      <div className={`mx-auto max-w-6xl ${isIbc ? 'px-5 py-7 sm:px-7 sm:py-8' : 'px-6 py-12'}`}>
-        {!isIbc && (
+    <div className={isEvent ? 'min-h-screen bg-[radial-gradient(circle_at_top_right,_#dbeafe_0,_#f8fafc_38%,_#f1f5f9_100%)]' : 'min-h-screen bg-gradient-to-br from-blue-50 to-white'}>
+      <div className={`mx-auto max-w-6xl ${isEvent ? 'px-5 py-7 sm:px-7 sm:py-8' : 'px-6 py-12'}`}>
+        {!isEvent && (
           <Button
             onClick={() => router.push('/booking')}
             variant="ghost"
@@ -283,31 +315,31 @@ export default function BookingCalendarPage() {
           </Button>
         )}
 
-        {bookingSuccess && isIbc ? (
+        {bookingSuccess && isEvent ? (
           <div className="mx-auto flex min-h-[620px] max-w-2xl items-center justify-center px-4">
             <div ref={successRef} className="w-full rounded-3xl border border-emerald-100 bg-white p-10 text-center shadow-2xl shadow-slate-200/80">
               <div className="mx-auto mb-7 flex h-24 w-24 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 shadow-inner">
                 <Check className="h-12 w-12" strokeWidth={2.5} />
               </div>
               <img src="https://eizo.fr/cdn/shop/files/EIZO-Logo_RGB.png?v=1732704479&width=310" alt="EIZO" className="mx-auto mb-8 h-auto w-32" />
-              <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-[#0066cc]">IBC 2026</p>
+              <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-[#0066cc]">{eventName}</p>
               <h1 className="text-3xl font-bold tracking-tight text-slate-950">{isEnglish ? 'Request successfully submitted' : 'Demande envoyée avec succès'}</h1>
               <p className="mx-auto mt-4 max-w-lg text-base leading-7 text-slate-600">
                 {isEnglish ? 'Your appointment request has been sent to the EIZO team. You will receive an email as soon as it has been confirmed.' : 'Votre demande de rendez-vous a été transmise à l’équipe EIZO. Vous recevrez un email dès qu’elle aura été confirmée.'}
               </p>
               <div className="mt-8 rounded-2xl bg-slate-50 px-6 py-5 text-sm text-slate-600">
-                <strong className="text-slate-900">RAI Amsterdam</strong><br />
-                Amsterdam, the Netherlands · Hall 7 · {isEnglish ? 'Booth' : 'Stand'} D33
+                <strong className="text-slate-900">{organizer.venue_name}</strong><br />
+                {eventVenueLabel}
               </div>
             </div>
           </div>
         ) : (
-        <div className={`grid grid-cols-1 gap-5 ${isIbc ? 'gap-6 md:min-h-[calc(100vh-5rem)] md:grid-cols-[320px_minmax(0,1fr)]' : 'lg:grid-cols-3 lg:gap-8'}`}>
-          <div className={isIbc ? '' : 'lg:col-span-1'}>
-            <Card className={isIbc ? 'h-full !border-0 bg-transparent shadow-none' : 'sticky top-6'}>
-              <CardContent className={isIbc ? 'flex h-full flex-col gap-5 p-0' : 'p-6'}>
-                <div className={isIbc ? 'ibc-bento-card mb-0 flex items-center gap-4 rounded-3xl bg-gradient-to-br from-[#071c36] via-[#0b315c] to-[#0066cc] p-6 text-white shadow-[0_20px_45px_-22px_rgba(0,66,130,0.75)]' : 'mb-6 flex items-center gap-4'}>
-                  {isIbc ? (
+        <div className={`grid grid-cols-1 gap-5 ${isEvent ? 'gap-6 md:min-h-[calc(100vh-5rem)] md:grid-cols-[320px_minmax(0,1fr)]' : 'lg:grid-cols-3 lg:gap-8'}`}>
+          <div className={isEvent ? '' : 'lg:col-span-1'}>
+            <Card className={isEvent ? 'h-full !border-0 bg-transparent shadow-none' : 'sticky top-6'}>
+              <CardContent className={isEvent ? 'flex h-full flex-col gap-5 p-0' : 'p-6'}>
+                <div className={isEvent ? 'ibc-bento-card mb-0 flex items-center gap-4 rounded-3xl bg-gradient-to-br from-[#071c36] via-[#0b315c] to-[#0066cc] p-6 text-white shadow-[0_20px_45px_-22px_rgba(0,66,130,0.75)]' : 'mb-6 flex items-center gap-4'}>
+                  {isEvent ? (
                     <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-white to-slate-50 p-3 shadow-[0_10px_30px_-12px_rgba(15,23,42,0.35)] ring-1 ring-slate-200/70">
                       <img
                         src="https://eizo.fr/cdn/shop/files/EIZO-Logo_RGB.png?v=1732704479&width=310"
@@ -323,48 +355,52 @@ export default function BookingCalendarPage() {
                     />
                   )}
                   <div>
-                    <h2 className={`text-xl font-semibold ${isIbc ? 'text-white' : 'text-gray-900'}`}>{organizer.name === 'Fred ROL' ? 'Notre expert EIZO' : organizer.name}</h2>
-                    <p className={`text-sm ${isIbc ? 'text-blue-100' : 'text-gray-600'}`}>{organizer.specialty || 'Expert EIZO'}</p>
+                    <h2 className={`text-xl font-semibold ${isEvent ? 'text-white' : 'text-gray-900'}`}>{organizer.name === 'Fred ROL' ? 'Notre expert EIZO' : organizer.name}</h2>
+                    <p className={`text-sm ${isEvent ? 'text-blue-100' : 'text-gray-600'}`}>{organizer.specialty || 'Expert EIZO'}</p>
                   </div>
                 </div>
-                <div className={isIbc ? 'grid grid-cols-1 gap-4' : 'space-y-3'}>
-                  <div className={isIbc ? 'ibc-bento-card flex items-center gap-3 rounded-2xl bg-white p-5 text-sm text-slate-600 shadow-sm' : 'flex items-center gap-2 text-sm text-gray-600'}>
+                <div className={isEvent ? 'grid grid-cols-1 gap-4' : 'space-y-3'}>
+                  <div className={isEvent ? 'ibc-bento-card flex items-center gap-3 rounded-2xl bg-white p-5 text-sm text-slate-600 shadow-sm' : 'flex items-center gap-2 text-sm text-gray-600'}>
                     <Clock className="w-4 h-4" />
                     <span>{organizer.slot_duration_minutes === 60 ? (isEnglish ? '1-hour appointment' : '1 heure de rendez-vous') : `${organizer.slot_duration_minutes || 60} min${isEnglish ? ' appointment' : ' de rendez-vous'}`}</span>
                   </div>
-                  <div className={isIbc ? 'ibc-bento-card flex items-center gap-3 rounded-2xl bg-[#ddecff] p-5 text-sm font-medium text-[#064b8e]' : 'flex items-center gap-2 text-sm text-gray-600'}>
+                  <div className={isEvent ? 'ibc-bento-card flex items-center gap-3 rounded-2xl bg-[#ddecff] p-5 text-sm font-medium text-[#064b8e]' : 'flex items-center gap-2 text-sm text-gray-600'}>
                     <MapPin className="w-4 h-4" />
-                    <span>{organizer.venue_name || (isIbc ? 'RAI Amsterdam' : siteConfig.showroom.name)}</span>
-                    {isIbc && (
-                      <a href="https://www.google.com/maps/search/?api=1&query=RAI%20Amsterdam%2C%20Amsterdam%2C%20the%20Netherlands" target="_blank" rel="noreferrer" className="ml-auto text-xs font-bold text-[#0066cc] hover:underline">
+                    <span>{organizer.venue_name || siteConfig.showroom.name}</span>
+                    {isEvent && (
+                      <a href={`https://www.google.com/maps/search/?api=1&query=${mapsQuery}`} target="_blank" rel="noreferrer" className="ml-auto text-xs font-bold text-[#0066cc] hover:underline">
                         Google Maps ↗
                       </a>
                     )}
                   </div>
-                  {isIbc && (
+                  {isEvent && (organizer.hall || organizer.booth) && (
                     <div className="ibc-bento-card flex items-center justify-between rounded-2xl bg-gradient-to-r from-[#075da8] to-[#0074d9] p-5 text-white shadow-[0_14px_30px_-18px_rgba(0,102,204,0.8)]">
-                      <div>
-                        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-blue-100">Hall</p>
-                        <p className="mt-1 text-lg font-bold">7</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-blue-100">{isEnglish ? 'Booth' : 'Stand'}</p>
-                        <p className="mt-1 text-lg font-bold">D33</p>
-                      </div>
+                      {organizer.hall && (
+                        <div>
+                          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-blue-100">Hall</p>
+                          <p className="mt-1 text-lg font-bold">{organizer.hall}</p>
+                        </div>
+                      )}
+                      {organizer.booth && (
+                        <div className="text-right">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-blue-100">{isEnglish ? 'Booth' : 'Stand'}</p>
+                          <p className="mt-1 text-lg font-bold">{organizer.booth}</p>
+                        </div>
+                      )}
                     </div>
                   )}
-                  <div className={isIbc ? 'ibc-bento-card flex items-center gap-3 rounded-2xl bg-white p-5 text-sm text-slate-600 shadow-sm' : 'flex items-center gap-2 text-sm text-gray-600'}>
+                  <div className={isEvent ? 'ibc-bento-card flex items-center gap-3 rounded-2xl bg-white p-5 text-sm text-slate-600 shadow-sm' : 'flex items-center gap-2 text-sm text-gray-600'}>
                     <Calendar className="w-4 h-4" />
                     <span>{eventDates || 'En présentiel'}</span>
                   </div>
-                  {!isIbc && organizer.venue_location && (
+                  {!isEvent && organizer.venue_location && (
                     <div className="text-sm text-gray-600">
                       {organizer.venue_location}{organizer.booth ? ` · Stand ${organizer.booth}` : ''}
                     </div>
                   )}
                 </div>
                 {isEvent && exhibits.length > 0 && (
-                  <div className={isIbc ? 'ibc-bento-card flex flex-1 flex-col rounded-3xl bg-white p-6 shadow-sm' : 'mt-6 border-t border-gray-200 pt-5'}>
+                  <div className={isEvent ? 'ibc-bento-card flex flex-1 flex-col rounded-3xl bg-white p-6 shadow-sm' : 'mt-6 border-t border-gray-200 pt-5'}>
                     <h3 className="mb-4 text-sm font-semibold text-gray-900">{isEnglish ? 'Products on display' : 'Produits présentés'}</h3>
                     <ul className="space-y-3 text-sm leading-6 text-gray-600">
                       {exhibits.map((exhibit) => <li key={exhibit}>• {exhibit}</li>)}
@@ -375,15 +411,15 @@ export default function BookingCalendarPage() {
             </Card>
           </div>
 
-          <div className={isIbc ? 'flex h-full min-w-0 flex-col gap-5' : 'lg:col-span-2 space-y-6'}>
-            <Card className={isIbc ? 'ibc-bento-card rounded-3xl !border-0 bg-white/95 shadow-[0_20px_55px_-24px_rgba(15,23,42,0.28)] backdrop-blur' : ''} style={isIbc ? { border: 'none' } : undefined}>
+          <div className={isEvent ? 'flex h-full min-w-0 flex-col gap-5' : 'lg:col-span-2 space-y-6'}>
+            <Card className={isEvent ? 'ibc-bento-card rounded-3xl !border-0 bg-white/95 shadow-[0_20px_55px_-24px_rgba(15,23,42,0.28)] backdrop-blur' : ''} style={isEvent ? { border: 'none' } : undefined}>
               <CardContent className="p-6">
-                {isIbc ? (
+                {isEvent ? (
                   <div>
                     <div className="mb-6">
-                      <p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-[#0066cc]">IBC 2026</p>
+                      <p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-[#0066cc]">{eventName}</p>
                       <h3 className="text-2xl font-semibold text-gray-900">{isEnglish ? 'Choose your day' : 'Choisissez votre journée'}</h3>
-                      <p className="mt-2 text-sm text-gray-500">{isEnglish ? 'Available September 11–14, 2026 only' : 'Uniquement du 11 au 14 septembre 2026'}</p>
+                      <p className="mt-2 text-sm text-gray-500">{isEnglish ? `Available ${eventDatesOnly} only` : `Uniquement du ${eventDatesOnly}`}</p>
                     </div>
                     <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                       {eventDays.map((date) => {
@@ -409,7 +445,7 @@ export default function BookingCalendarPage() {
                               {date.toLocaleDateString(locale, { weekday: 'long' })}
                             </span>
                             <span className="mt-3 block text-3xl font-bold">{date.getDate()}</span>
-                            <span className={`mt-1 block text-sm ${isSelected ? 'text-blue-100' : 'text-gray-500'}`}>{isEnglish ? 'September' : 'septembre'}</span>
+                            <span className={`mt-1 block text-sm ${isSelected ? 'text-blue-100' : 'text-gray-500'}`}>{date.toLocaleDateString(locale, { month: 'long' })}</span>
                           </button>
                         );
                       })}
@@ -480,8 +516,8 @@ export default function BookingCalendarPage() {
             </Card>
 
             {selectedDate && availableDays.length > 0 && (
-              <Card className={isIbc ? 'ibc-bento-card flex-1 rounded-3xl !border-0 bg-white/95 shadow-[0_20px_55px_-24px_rgba(15,23,42,0.28)] backdrop-blur' : ''} style={isIbc ? { border: 'none' } : undefined}>
-                <CardContent className={isIbc ? 'p-7' : 'p-6'}>
+              <Card className={isEvent ? 'ibc-bento-card flex-1 rounded-3xl !border-0 bg-white/95 shadow-[0_20px_55px_-24px_rgba(15,23,42,0.28)] backdrop-blur' : ''} style={isEvent ? { border: 'none' } : undefined}>
+                <CardContent className={isEvent ? 'p-7' : 'p-6'}>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">
                     {isEnglish ? 'Available times' : 'Créneaux disponibles'} - {selectedDate?.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}
                   </h3>

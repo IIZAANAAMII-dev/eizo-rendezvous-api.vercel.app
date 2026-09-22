@@ -26,9 +26,13 @@ interface Booking {
 interface Organizer {
   name: string;
   slug: string;
+  specialty?: string;
   venue_name?: string;
   venue_location?: string;
+  hall?: string;
   booth?: string;
+  event_start_date?: string;
+  event_end_date?: string;
 }
 
 export default function ManageBookingPage() {
@@ -105,11 +109,11 @@ export default function ManageBookingPage() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Erreur');
-      setMessage(isIbc
-        ? (isEnglish ? 'Your IBC 2026 appointment has been cancelled.' : 'Votre rendez-vous IBC 2026 a bien été annulé.')
+      setMessage(isEvent
+        ? (isEnglish ? `Your ${eventName} appointment has been cancelled.` : `Votre rendez-vous ${eventName} a bien été annulé.`)
         : 'Votre rendez-vous a été annulé. Vous allez être redirigé pour prendre un autre créneau.');
       setBooking(prev => prev ? { ...prev, status: 'cancelled' } : null);
-      if (!isIbc) {
+      if (!isEvent) {
         setTimeout(() => {
           window.location.href = `${siteConfig.appUrl}/booking/${organizer?.slug || 'coloredge'}`;
         }, 2000);
@@ -135,13 +139,13 @@ export default function ManageBookingPage() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Erreur');
-      setMessage(isIbc
+      setMessage(isEvent
         ? (isEnglish ? 'Your appointment change has been submitted and is awaiting approval.' : 'Votre rendez-vous a été modifié et votre demande est en attente de validation.')
         : 'Votre demande de modification a bien été enregistrée et est en attente de validation.');
       setBooking(data.booking);
-      if (isIbc) {
+      if (isEvent) {
         setTimeout(() => {
-          window.location.href = `${siteConfig.appUrl}/booking/ibc-2026?lang=${isEnglish ? 'en' : 'fr'}`;
+          window.location.href = `${siteConfig.appUrl}/booking/${organizer?.slug}?lang=${isEnglish ? 'en' : 'fr'}`;
         }, 2500);
       }
     } catch (err: any) {
@@ -170,14 +174,15 @@ export default function ManageBookingPage() {
   if (!booking) return null;
 
   const isActive = ['pending', 'confirmed'].includes(booking.status);
-  const isIbc = organizer?.slug === 'ibc-2026';
-  const isEnglish = isIbc && booking.requested_product?.language === 'en';
-  const demo = isIbc ? 'IBC 2026' : booking.requested_product?.title || booking.customer_need || 'ColorEdge';
+  const isEvent = Boolean(organizer?.event_start_date && organizer?.event_end_date);
+  const eventName = organizer?.specialty || 'EIZO';
+  const isEnglish = isEvent && booking.requested_product?.language === 'en';
+  const demo = isEvent ? eventName : booking.requested_product?.title || booking.customer_need || 'ColorEdge';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white py-12 px-6">
       <div className="max-w-2xl mx-auto space-y-8">
-        <h1 className="text-3xl font-bold text-gray-900 text-center">{isIbc ? (isEnglish ? 'Your EIZO appointment at IBC 2026' : 'Votre rendez-vous EIZO à IBC 2026') : 'Votre rendez-vous EIZO ColorEdge'}</h1>
+        <h1 className="text-3xl font-bold text-gray-900 text-center">{isEvent ? (isEnglish ? `Your EIZO appointment at ${eventName}` : `Votre rendez-vous EIZO à ${eventName}`) : 'Votre rendez-vous EIZO ColorEdge'}</h1>
 
         <Card>
           <CardContent className="p-6 space-y-4">
@@ -199,9 +204,13 @@ export default function ManageBookingPage() {
               <MapPin className="w-5 h-5 text-[#0066cc] mt-1" />
               <div>
                 <p className="text-sm text-gray-500">{isEnglish ? 'Location' : 'Lieu'}</p>
-                <p className="font-medium text-gray-900">{isIbc ? organizer?.venue_name || 'RAI Amsterdam' : siteConfig.showroom.name}</p>
-                {isIbc ? (
-                  <p className="text-sm text-gray-600">{organizer?.venue_location || 'Amsterdam, the Netherlands'} · Hall 7 · {isEnglish ? 'Booth' : 'Stand'} D33</p>
+                <p className="font-medium text-gray-900">{isEvent ? organizer?.venue_name : siteConfig.showroom.name}</p>
+                {isEvent ? (
+                  <p className="text-sm text-gray-600">{[
+                    organizer?.venue_location,
+                    organizer?.hall ? `Hall ${organizer.hall}` : null,
+                    organizer?.booth ? `${isEnglish ? 'Booth' : 'Stand'} ${organizer.booth}` : null,
+                  ].filter(Boolean).join(' · ')}</p>
                 ) : (
                   <>
                     <p className="text-sm text-gray-600">{siteConfig.showroom.address.street}</p>
@@ -218,7 +227,7 @@ export default function ManageBookingPage() {
                 <p className="font-medium text-gray-900">{demo}</p>
               </div>
             </div>
-            {!isIbc && siteConfig.contact.phone && (
+            {!isEvent && siteConfig.contact.phone && (
               <div className="flex items-start gap-3">
                 <Phone className="w-5 h-5 text-[#0066cc] mt-1" />
                 <div>

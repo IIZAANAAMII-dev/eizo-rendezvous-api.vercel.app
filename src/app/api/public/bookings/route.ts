@@ -125,7 +125,8 @@ export async function POST(request: NextRequest) {
       return withCors(NextResponse.json({ error: 'Failed to fetch organizer' }, { status: 500 }), request);
     }
 
-    const bookingRequestedProduct: RequestedProduct | null = organizer.slug === 'ibc-2026'
+    const isEventOrganizer = Boolean(organizer.event_start_date && organizer.event_end_date);
+    const bookingRequestedProduct: RequestedProduct | null = isEventOrganizer
       ? { ...(requestedProduct || {}), language }
       : requestedProduct;
 
@@ -264,7 +265,12 @@ export async function POST(request: NextRequest) {
         language,
         venueName: organizer.venue_name,
         venueLocation: organizer.venue_location,
+        hall: organizer.hall,
         booth: organizer.booth,
+        isEvent: isEventOrganizer,
+        eventName: organizer.specialty,
+        eventStartDate: organizer.event_start_date,
+        eventEndDate: organizer.event_end_date,
       };
 
       await Promise.all([

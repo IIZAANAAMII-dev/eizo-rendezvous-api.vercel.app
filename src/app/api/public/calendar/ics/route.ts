@@ -31,13 +31,19 @@ export async function GET(request: NextRequest) {
 
     const { data: organizer } = await supabase
       .from('organizers')
-      .select('slug, venue_name, venue_location, booth')
+      .select('slug, specialty, venue_name, venue_location, hall, booth, event_start_date, event_end_date')
       .eq('id', booking.organizer_id)
       .single();
-    const isIbc = organizer?.slug === 'ibc-2026';
+    const isEvent = Boolean(organizer?.event_start_date && organizer?.event_end_date);
+    const eventName = organizer?.specialty || 'EIZO';
     const language = booking.requested_product?.language === 'en' ? 'en' : 'fr';
-    const location = isIbc
-      ? `${organizer?.venue_name || 'RAI Amsterdam'}, ${organizer?.venue_location || 'Amsterdam, the Netherlands'}, Hall 7, ${language === 'en' ? 'Booth' : 'Stand'} D33`
+    const location = isEvent
+      ? [
+          organizer?.venue_name,
+          organizer?.venue_location,
+          organizer?.hall ? `Hall ${organizer.hall}` : null,
+          organizer?.booth ? `${language === 'en' ? 'Booth' : 'Stand'} ${organizer.booth}` : null,
+        ].filter(Boolean).join(', ')
       : siteConfig.showroom.fullAddress;
     const requestedProduct = booking.requested_product?.title || booking.product_title || 'ColorEdge';
     const startTime = booking.start_time.slice(0, 5);
@@ -47,7 +53,7 @@ export async function GET(request: NextRequest) {
     let description: string;
 
     if (role === 'expert') {
-      title = isIbc ? `EIZO at IBC 2026 — ${booking.customer_name}` : `Démonstration EIZO ColorEdge — ${booking.customer_name}`;
+      title = isEvent ? `EIZO at ${eventName} — ${booking.customer_name}` : `Démonstration EIZO ColorEdge — ${booking.customer_name}`;
       description = [
         `Client : ${booking.customer_name}`,
         `Téléphone : ${booking.customer_phone || ''}`,
@@ -58,7 +64,7 @@ export async function GET(request: NextRequest) {
         `${language === 'en' ? 'Location' : 'Lieu'} : ${location}`,
       ].filter(Boolean).join('\n');
     } else {
-      title = isIbc ? 'EIZO at IBC 2026' : `Démonstration EIZO ColorEdge — ${siteConfig.showroom.name}`;
+      title = isEvent ? `EIZO at ${eventName}` : `Démonstration EIZO ColorEdge — ${siteConfig.showroom.name}`;
       description = [
         `Démonstration : ${requestedProduct}`,
         booking.customer_usage && `Utilisation : ${booking.customer_usage}`,
@@ -82,7 +88,7 @@ export async function GET(request: NextRequest) {
       status: 200,
       headers: {
         'Content-Type': 'text/calendar; charset=utf-8',
-        'Content-Disposition': `attachment; filename="${isIbc ? 'eizo-ibc-2026' : 'eizo-coloredge'}.ics"`,
+        'Content-Disposition': `attachment; filename="eizo-${organizer?.slug || 'coloredge'}.ics"`,
       },
     });
   } catch (error) {

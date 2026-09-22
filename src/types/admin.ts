@@ -27,7 +27,6 @@ export interface Organizer {
   event_end_date?: string;
   venue_name?: string;
   venue_location?: string;
-  hall?: string;
   booth?: string;
   created_at?: string;
   updated_at?: string;

@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
     const { data: organizer } = await supabase
       .from('organizers')
-      .select('slug, specialty, venue_name, venue_location, hall, booth, event_start_date, event_end_date')
+      .select('slug, specialty, venue_name, venue_location, booth, event_start_date, event_end_date')
       .eq('id', booking.organizer_id)
       .single();
     const isEvent = Boolean(organizer?.event_start_date && organizer?.event_end_date);
@@ -41,7 +41,6 @@ export async function GET(request: NextRequest) {
       ? [
           organizer?.venue_name,
           organizer?.venue_location,
-          organizer?.hall ? `Hall ${organizer.hall}` : null,
           organizer?.booth ? `${language === 'en' ? 'Booth' : 'Stand'} ${organizer.booth}` : null,
         ].filter(Boolean).join(', ')
       : siteConfig.showroom.fullAddress;

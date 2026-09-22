@@ -46,7 +46,6 @@ export async function GET(
       event_end_date: data.event_end_date,
       venue_name: data.venue_name,
       venue_location: data.venue_location,
-      hall: data.hall,
       booth: data.booth,
     }), request);
   } catch (error) {

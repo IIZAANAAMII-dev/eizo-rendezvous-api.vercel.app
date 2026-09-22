@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
 
     const { data: organizer } = await supabase
       .from('organizers')
-      .select('name, slug, email, specialty, notification_email, venue_name, venue_location, hall, booth, event_start_date, event_end_date')
+      .select('name, slug, email, specialty, notification_email, venue_name, venue_location, booth, event_start_date, event_end_date')
       .eq('id', booking.organizer_id)
       .single();
 
@@ -123,7 +123,6 @@ export async function GET(request: NextRequest) {
     const eventVenueHtml = isEvent
       ? `<div class="venue"><strong>${organizer?.venue_name || ''}</strong><br>${[
           organizer?.venue_location,
-          organizer?.hall ? `Hall ${organizer.hall}` : null,
           organizer?.booth ? `${language === 'en' ? 'Booth' : 'Stand'} ${organizer.booth}` : null,
         ].filter(Boolean).join(' · ')}</div>`
       : '';
@@ -223,7 +222,6 @@ export async function GET(request: NextRequest) {
           language: booking.requested_product?.language === 'en' ? 'en' : 'fr',
           venueName: organizer?.venue_name,
           venueLocation: organizer?.venue_location,
-          hall: organizer?.hall,
           booth: organizer?.booth,
           isEvent,
           eventName,
@@ -315,7 +313,6 @@ export async function GET(request: NextRequest) {
           language: booking.requested_product?.language === 'en' ? 'en' : 'fr',
           venueName: organizer?.venue_name,
           venueLocation: organizer?.venue_location,
-          hall: organizer?.hall,
           booth: organizer?.booth,
           isEvent,
           eventName,
@@ -385,7 +382,6 @@ export async function GET(request: NextRequest) {
           language: booking.requested_product?.language === 'en' ? 'en' : 'fr',
           venueName: organizer?.venue_name,
           venueLocation: organizer?.venue_location,
-          hall: organizer?.hall,
           booth: organizer?.booth,
           isEvent,
           eventName,

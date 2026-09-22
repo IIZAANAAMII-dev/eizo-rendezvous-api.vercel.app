@@ -52,7 +52,6 @@ export interface BookingEmailData {
   language?: 'fr' | 'en';
   venueName?: string;
   venueLocation?: string;
-  hall?: string;
   booth?: string;
   isEvent?: boolean;
   eventName?: string;
@@ -349,7 +348,6 @@ function eventVenueLabel(data: BookingEmailData, en: boolean): string {
   return [
     data.venueName,
     data.venueLocation,
-    data.hall ? `Hall ${data.hall}` : null,
     data.booth ? `${en ? 'Booth' : 'Stand'} ${data.booth}` : null,
   ].filter(Boolean).join(' · ');
 }

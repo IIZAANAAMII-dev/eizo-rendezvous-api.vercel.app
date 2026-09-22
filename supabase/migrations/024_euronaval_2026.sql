@@ -1,11 +1,7 @@
 BEGIN;
 
--- Nouveau champ hall (le numéro de stand reste dans booth)
-ALTER TABLE organizers
-  ADD COLUMN IF NOT EXISTS hall TEXT;
-
 -- IBC 2026 est terminé : on conserve l'historique mais on désactive l'organizer
-UPDATE organizers SET active = false, hall = '7' WHERE slug = 'ibc-2026';
+UPDATE organizers SET active = false WHERE slug = 'ibc-2026';
 
 DO $$
 DECLARE
@@ -18,7 +14,7 @@ BEGIN
       name, slug, email, specialty, description, active,
       slot_duration_minutes, buffer_minutes, working_days,
       notification_email, brand_color, locale, timezone,
-      event_start_date, event_end_date, venue_name, venue_location, hall, booth
+      event_start_date, event_end_date, venue_name, venue_location, booth
     ) VALUES (
       'Équipe EIZO',
       'euronaval-2026',
@@ -36,8 +32,7 @@ BEGIN
       '2026-11-03',
       '2026-11-06',
       'Paris Nord Villepinte',
-      'Paris, France',
-      '6',
+      'Paris, France · Hall 6',
       NULL
     )
     RETURNING id INTO euronaval_id;
@@ -57,8 +52,7 @@ BEGIN
       event_start_date = '2026-11-03',
       event_end_date = '2026-11-06',
       venue_name = 'Paris Nord Villepinte',
-      venue_location = 'Paris, France',
-      hall = '6',
+      venue_location = 'Paris, France · Hall 6',
       booth = NULL
     WHERE id = euronaval_id;
   END IF;

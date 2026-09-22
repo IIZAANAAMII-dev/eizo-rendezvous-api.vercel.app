@@ -35,7 +35,7 @@ export async function GET(
 
     const { data: organizer } = await supabase
       .from('organizers')
-      .select('name, slug, email, specialty, notification_email, slot_duration_minutes, venue_name, venue_location, hall, booth, event_start_date, event_end_date')
+      .select('name, slug, email, specialty, notification_email, slot_duration_minutes, venue_name, venue_location, booth, event_start_date, event_end_date')
       .eq('id', booking.organizer_id)
       .single();
 
@@ -79,7 +79,7 @@ export async function PATCH(
 
     const { data: organizer } = await supabase
       .from('organizers')
-      .select('id, name, slug, email, specialty, notification_email, slot_duration_minutes, venue_name, venue_location, hall, booth, event_start_date, event_end_date')
+      .select('id, name, slug, email, specialty, notification_email, slot_duration_minutes, venue_name, venue_location, booth, event_start_date, event_end_date')
       .eq('id', booking.organizer_id)
       .single();
 
@@ -122,7 +122,6 @@ export async function PATCH(
         language: booking.requested_product?.language === 'en' ? 'en' as const : 'fr' as const,
         venueName: organizer.venue_name,
         venueLocation: organizer.venue_location,
-        hall: organizer.hall,
         booth: organizer.booth,
         isEvent: Boolean(organizer.event_start_date && organizer.event_end_date),
         eventName: organizer.specialty,
@@ -222,7 +221,6 @@ export async function PATCH(
           language: updated.requested_product?.language === 'en' ? 'en' as const : 'fr' as const,
           venueName: organizer.venue_name,
           venueLocation: organizer.venue_location,
-          hall: organizer.hall,
           booth: organizer.booth,
           isEvent: Boolean(organizer.event_start_date && organizer.event_end_date),
           eventName: organizer.specialty,

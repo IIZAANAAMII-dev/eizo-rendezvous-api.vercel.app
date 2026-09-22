@@ -265,7 +265,6 @@ export async function POST(request: NextRequest) {
         language,
         venueName: organizer.venue_name,
         venueLocation: organizer.venue_location,
-        hall: organizer.hall,
         booth: organizer.booth,
         isEvent: isEventOrganizer,
         eventName: organizer.specialty,

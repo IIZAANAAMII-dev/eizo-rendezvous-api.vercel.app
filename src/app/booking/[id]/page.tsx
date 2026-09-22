@@ -23,7 +23,6 @@ interface Organizer {
   event_end_date?: string;
   venue_name?: string;
   venue_location?: string;
-  hall?: string;
   booth?: string;
 }
 
@@ -295,7 +294,6 @@ export default function BookingCalendarPage() {
   todayStart.setHours(0, 0, 0, 0);
   const eventVenueLabel = [
     organizer.venue_location,
-    organizer.hall ? `Hall ${organizer.hall}` : null,
     organizer.booth ? `${isEnglish ? 'Booth' : 'Stand'} ${organizer.booth}` : null,
   ].filter(Boolean).join(' · ');
   const mapsQuery = encodeURIComponent([organizer.venue_name, organizer.venue_location].filter(Boolean).join(', '));

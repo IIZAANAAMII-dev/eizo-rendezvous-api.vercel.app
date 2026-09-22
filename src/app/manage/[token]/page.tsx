@@ -29,7 +29,6 @@ interface Organizer {
   specialty?: string;
   venue_name?: string;
   venue_location?: string;
-  hall?: string;
   booth?: string;
   event_start_date?: string;
   event_end_date?: string;
@@ -208,7 +207,6 @@ export default function ManageBookingPage() {
                 {isEvent ? (
                   <p className="text-sm text-gray-600">{[
                     organizer?.venue_location,
-                    organizer?.hall ? `Hall ${organizer.hall}` : null,
                     organizer?.booth ? `${isEnglish ? 'Booth' : 'Stand'} ${organizer.booth}` : null,
                   ].filter(Boolean).join(' · ')}</p>
                 ) : (

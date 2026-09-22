@@ -78,7 +78,7 @@ export default function BookingCalendarPage() {
     try {
       const response = await fetch(`/api/public/organizers/${params.id}`);
       const data = await response.json();
-      setOrganizer(data);
+      setOrganizer(response.ok ? data : null);
       if (data.event_start_date) {
         const [year, month] = data.event_start_date.split('-').map(Number);
         setCurrentMonth(new Date(year, month - 1, 1));
@@ -135,8 +135,8 @@ export default function BookingCalendarPage() {
     return () => { context.revert(); };
   }, [availableDays.length, organizer]);
 
-  const getInitials = (name: string) => {
-    return name
+  const getInitials = (name?: string) => {
+    return (name || 'E')
       .split(' ')
       .map(n => n[0])
       .join('')
@@ -371,20 +371,12 @@ export default function BookingCalendarPage() {
                       </a>
                     )}
                   </div>
-                  {isEvent && (organizer.hall || organizer.booth) && (
+                  {isEvent && organizer.booth && (
                     <div className="ibc-bento-card flex items-center justify-between rounded-2xl bg-gradient-to-r from-[#075da8] to-[#0074d9] p-5 text-white shadow-[0_14px_30px_-18px_rgba(0,102,204,0.8)]">
-                      {organizer.hall && (
-                        <div>
-                          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-blue-100">Hall</p>
-                          <p className="mt-1 text-lg font-bold">{organizer.hall}</p>
-                        </div>
-                      )}
-                      {organizer.booth && (
-                        <div className="text-right">
-                          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-blue-100">{isEnglish ? 'Booth' : 'Stand'}</p>
-                          <p className="mt-1 text-lg font-bold">{organizer.booth}</p>
-                        </div>
-                      )}
+                      <div className="text-right">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-blue-100">{isEnglish ? 'Booth' : 'Stand'}</p>
+                        <p className="mt-1 text-lg font-bold">{organizer.booth}</p>
+                      </div>
                     </div>
                   )}
                   <div className={isEvent ? 'ibc-bento-card flex items-center gap-3 rounded-2xl bg-white p-5 text-sm text-slate-600 shadow-sm' : 'flex items-center gap-2 text-sm text-gray-600'}>

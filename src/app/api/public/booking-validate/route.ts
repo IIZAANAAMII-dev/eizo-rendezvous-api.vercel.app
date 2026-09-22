@@ -176,7 +176,7 @@ export async function GET(request: NextRequest) {
 
       const calendarTitle = isEvent ? `EIZO at ${eventName} — ${booking.customer_name}` : `Démonstration EIZO ColorEdge — ${booking.customer_name}`;
       const calendarLocation = isEvent
-        ? [organizer?.venue_name, organizer?.venue_location, organizer?.hall ? `Hall ${organizer.hall}` : null, organizer?.booth ? `Booth ${organizer.booth}` : null].filter(Boolean).join(', ')
+        ? [organizer?.venue_name, organizer?.venue_location, organizer?.booth ? `Booth ${organizer.booth}` : null].filter(Boolean).join(', ')
         : siteConfig.showroom.fullAddress;
       const googleUrl = buildGoogleCalendarUrl({
         title: calendarTitle,

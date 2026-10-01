@@ -148,6 +148,7 @@
   const isEnglish = siteLanguage.startsWith('en');
   let previousFocus = null;
   let loadTimeout = null;
+  let needsReload = false;
 
   function applyLanguage() {
     if (!isEnglish) return;
@@ -190,6 +191,11 @@
     picker.style.display = 'none';
     calendar.classList.add('active');
     fallbackLink.href = calendarUrl;
+    if (needsReload) {
+      needsReload = false;
+      frame.classList.remove('loaded');
+      frame.src = `${calendarUrl}&rebook=${Date.now()}`;
+    }
     if (!frame.classList.contains('loaded')) {
       loader.classList.remove('hidden');
       fallbackLink.style.display = 'none';
@@ -224,6 +230,10 @@
     fallbackLink.style.display = 'none';
   });
   closeButton.addEventListener('click', closeEvents);
+  window.addEventListener('message', function (event) {
+    if (event.origin.indexOf('eizo-rendezvous-api') === -1) return;
+    if (event.data && event.data.type === 'eizo-booking-confirmed') needsReload = true;
+  });
   document.getElementById('eizo-event-euronaval').addEventListener('click', openEventCalendar);
   document.getElementById('eizo-events-back').addEventListener('click', showPicker);
   backdrop.addEventListener('click', function (event) { if (event.target === backdrop) closeEvents(); });

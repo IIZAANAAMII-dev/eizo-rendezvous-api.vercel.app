@@ -223,6 +223,7 @@ export default function BookingCalendarPage() {
         if (isEvent) {
           setIsBookingModalOpen(false);
           setBookingSuccess(true);
+          try { window.parent.postMessage({ type: 'eizo-booking-confirmed' }, '*'); } catch {}
         } else {
           alert('Demande enregistrée. Vous recevrez un email de confirmation dès validation.');
           router.push('/booking');
@@ -237,6 +238,14 @@ export default function BookingCalendarPage() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleBookAnother = () => {
+    setBookingSuccess(false);
+    setSelectedTime(null);
+    setBookingData(prev => ({ ...prev, notes: '' }));
+    fetchMonthSlots(currentMonth);
+    if (selectedDate) fetchAvailableSlots(selectedDate);
   };
 
   const previousMonth = () => {
@@ -329,6 +338,15 @@ export default function BookingCalendarPage() {
                 <strong className="text-slate-900">{organizer.venue_name}</strong><br />
                 {eventVenueLabel}
               </div>
+              <Button
+                onClick={handleBookAnother}
+                className="mt-8 w-full bg-[#0066cc] font-medium text-white hover:bg-[#0052a3]"
+              >
+                {isEnglish ? 'Book another appointment' : 'Prendre un autre rendez-vous'}
+              </Button>
+              <p className="mt-3 text-xs leading-5 text-slate-500">
+                {isEnglish ? 'You can book several time slots — on the same day or on another day.' : 'Vous pouvez réserver plusieurs créneaux, le même jour ou un autre jour.'}
+              </p>
             </div>
           </div>
         ) : (

@@ -49,10 +49,9 @@ export function registrationToBooking(row: Registration): Booking | null {
     id: row.id, organizer_id: event.id, date: event.day,
     start_time: start ?? event.defaultStart, end_time: end ?? (start ? start : event.defaultEnd),
     customer_name: name, customer_email: row.email, customer_phone: null,
-    customer_notes: row.message || null,
-    customer_need: [row.company, row.job_title].filter(Boolean).join(' · ') || null,
-    customer_usage: row.slot ? 'Créneau : ' + row.slot : null,
+    customer_notes: row.message || null, customer_need: null, customer_usage: null,
     requested_product: null, product_title: null,
+    company: row.company || null, job_title: row.job_title || null, slot_label: row.slot || null,
     status: row.status, created_at: row.created_at, source: 'registration',
   };
 }

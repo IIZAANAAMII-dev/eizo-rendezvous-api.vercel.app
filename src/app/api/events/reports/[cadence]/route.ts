@@ -8,7 +8,10 @@ import { accessFor, reportAudience, scopeTo, type Access } from '@/lib/events-ac
 
 export const dynamic = 'force-dynamic';
 
-// Appelée par Vercel Cron (vercel.json) chaque lundi, avec « Authorization: Bearer $CRON_SECRET ».
+// Appelée chaque matin par Vercel Cron (vercel.json) sur /api/events/reports/2jours, avec
+// « Authorization: Bearer $CRON_SECRET ». La synthèse ne part qu'un jour sur deux et couvre
+// les deux jours précédents. Elle ne concerne que les événements datés et pas encore terminés :
+// une dernière synthèse part dans les 2 jours qui suivent la fin, puis plus rien.
 // Chaque destinataire reçoit une synthèse limitée aux événements qu'il a le droit de voir
 // (table eizo_event_access).
 // Mode dev (par défaut) : seule la synthèse de klegarrec@feeder.fr est envoyée, à lui seul.
@@ -19,7 +22,7 @@ export async function GET(request: Request, {params}: {params: Promise<{cadence:
   const secret = process.env.CRON_SECRET;
   if (!secret || secret.length<32 || !secretMatches(request.headers.get('authorization') ?? '', 'Bearer '+secret))
     return Response.json({error:'Accès refusé'},{status:401});
-  const cadence = z.enum(['jour','semaine']).safeParse((await params).cadence);
+  const cadence = z.enum(['jour','2jours','semaine']).safeParse((await params).cadence);
   if (!cadence.success) return Response.json({error:'Cadence inconnue'},{status:404});
   const search = new URL(request.url).searchParams;
   const test = search.get('test') === '1';
@@ -36,8 +39,13 @@ export async function GET(request: Request, {params}: {params: Promise<{cadence:
     const link = new URL('/events',origin);
     if (link.protocol!=='https:') throw new Error('EIZO_EVENTS_REPORT_ORIGIN doit être en https');
     const now = new Date();
-    // La synthèse hebdomadaire part le lundi (heure de Paris) : les autres jours on ignore.
-    if (!test && cadence.data==='semaine' && dayKey(now) !== weekKey(now)) return Response.json({skipped:'pas lundi'});
+    const days = {jour:1, '2jours':2, semaine:7}[cadence.data];
+    const today = dayKey(now);
+    const dayNumber = Math.round(Date.parse(today+'T00:00:00Z')/86_400_000);
+    if (!test) {
+      if (cadence.data==='semaine' && today !== weekKey(now)) return Response.json({skipped:'pas lundi'});
+      if (cadence.data==='2jours' && dayNumber % 2 !== 0) return Response.json({skipped:'jour sans synthèse'});
+    }
 
     // Qui reçoit quoi : [adresse de livraison, périmètre utilisé pour construire le mail].
     let deliveries: [string, Access][];
@@ -49,9 +57,17 @@ export async function GET(request: Request, {params}: {params: Promise<{cadence:
       deliveries = (await reportAudience()).map(access=>[access.email, access]);
     }
 
-    const [allEvents, allRows] = await Promise.all([events(), bookings()]);
+    const [everyEvent, allRows] = await Promise.all([events(), bookings()]);
+    // Événements encore suivis : datés, et terminés depuis moins de 2 jours.
+    const allEvents = everyEvent.filter(event=>{
+      const last = event.event_end_date ?? event.event_start_date;
+      if (!last) return false;
+      const stop = new Date(last+'T12:00:00Z'); stop.setUTCDate(stop.getUTCDate()+days);
+      return today <= stop.toISOString().slice(0,10);
+    });
+    if (!allEvents.length) return Response.json({skipped:'aucun événement en cours'});
     const scope = mode.production && !test ? 'global' : 'global-dev';
-    const periodKey = bookingReport([],[],cadence.data,now,link).key;
+    const periodKey = bookingReport([],[],days,now,link).key;
     const key = {scope,cadence:cadence.data,period_start:periodKey};
     if (!test) {
       const claim = await getSupabaseClient().from('eizo_event_reports').insert(key);
@@ -62,7 +78,7 @@ export async function GET(request: Request, {params}: {params: Promise<{cadence:
     for (const [to, access] of deliveries) {
       const scoped = scopeTo(access, allEvents, allRows);
       if (!scoped.events.length) continue;
-      const report = bookingReport(scoped.rows, scoped.events, cadence.data, now, link);
+      const report = bookingReport(scoped.rows, scoped.events, days, now, link);
       const subject = (mode.production && !test ? '' : '[DEV] ') + report.subject +
         (test && access.email !== to ? ' · vue de '+access.email : '');
       try {

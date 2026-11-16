@@ -19,9 +19,8 @@ export default async function Page({searchParams}: {searchParams:Promise<Query>}
   const {events:list, rows} = scopeTo(access, allEvents, allRows);
   const current = query.event ? list.find(event=>event.slug===query.event) : (list.length===1 ? list[0] : undefined);
   return <Shell
-    who={<span className={styles.who}>{access.email}<b>{access.role==='admin' ? 'Admin' : 'Lecture'}</b></span>}
+    who={<span className={styles.who}>{access.email}<b>{access.events==='*' ? 'Tous les événements' : access.events.length+' événement'+(access.events.length>1?'s':'')}</b></span>}
     control={<form action={logout}><button className={styles.logout}>Déconnexion</button></form>}>
-    {query.notice && query.notice!=='connexion' && <p role="status" className={styles.notice}>{query.notice==='enregistre' ? 'Modifications enregistrées.' : 'Action refusée ou données invalides.'}</p>}
-    <Dashboard events={list} event={current} rows={rows} query={query} admin={access.role==='admin'} />
+    <Dashboard events={list} event={current} rows={rows} query={query} />
   </Shell>;
 }

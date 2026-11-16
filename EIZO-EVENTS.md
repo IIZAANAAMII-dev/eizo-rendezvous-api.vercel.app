@@ -30,26 +30,30 @@ Les comptes se créent dans Supabase Auth (adresse confirmée). Les droits sont 
 
 Une personne ne voit **que** les rendez-vous de ses événements : tableau de bord, exports, changements de statut et mail du lundi sont filtrés. Sans ligne dans la table, aucun accès (sauf `EIZO_EVENTS_USERS=email=admin`, conservé en secours).
 
-## Synthèse e-mail hebdomadaire
+## Synthèse e-mail tous les deux jours
 
-Vercel Cron (`vercel.json`) appelle `GET /api/events/reports/semaine` chaque lundi à 07:00 UTC (8 h à Paris). Le mail contient le résumé de la semaine écoulée (nouvelles demandes, évolution, statuts, détail par événement, liste des nouvelles demandes) et les liens vers le back-office (statistiques, synthèse détaillée de la semaine, export Excel).
+Vercel Cron (`vercel.json`) appelle chaque matin à 07:00 UTC `GET /api/events/reports/2jours` ; la synthèse ne part **qu'un jour sur deux** et couvre les deux jours précédents (heure de Paris). Chaque destinataire (`eizo_event_access.weekly_report = true`) reçoit uniquement ses événements, avec la fiche détaillée de chaque nouvelle demande (entreprise, fonction, contact, créneau, produit, message) et le lien vers le back-office.
 
-- **Mode dev (par défaut)** : envoi uniquement à `klegarrec@feeder.fr` (ou `EIZO_EVENTS_REPORT_DEV_TO`), objet préfixé `[DEV]`.
-- **Mode production** : `EIZO_EVENTS_REPORT_MODE=production` → un mail par ligne `weekly_report = true` de `eizo_event_access`, limité aux événements de la personne.
-- **Voir le mail d'une autre personne** (envoyé à toi seul) : ajouter `&as=adresse@feeder.fr` au test.
-- **Test immédiat** (toujours au seul développeur, sans attendre lundi) :
-  `curl -H "Authorization: Bearer $CRON_SECRET" "https://eizo-rendezvous-api-vercel-app.vercel.app/api/events/reports/semaine?test=1"`
+**Arrêt automatique** : seuls les événements datés sont suivis, jusqu'à 2 jours après leur fin (Rencontres EIZO : dernière synthèse le 05/12/2026, puis plus rien). Rien à désactiver à la main.
 
-Variables requises : `CRON_SECRET` (≥ 32 caractères), `EIZO_EVENTS_REPORT_FROM` (adresse `@eizo.fr` acceptée par le SMTP ; à défaut `EMAIL_FROM` puis `SMTP_USER`), SMTP déjà configuré. Un envoi par semaine et par mode, tracé dans `eizo_event_reports`.
+- **Mode dev (défaut)** : envoi uniquement à `klegarrec@feeder.fr`, objet préfixé `[DEV]`.
+- **Mode production** : `EIZO_EVENTS_REPORT_MODE=production` dans Vercel.
+- **Test immédiat** : `curl -H "Authorization: Bearer $CRON_SECRET" ".../api/events/reports/2jours?test=1"` (ajouter `&as=adresse` pour la vue d'une personne).
 
-**Après l'événement** (Rencontres EIZO du 03/12/2026) : retirer le cron de `vercel.json` pour arrêter les synthèses. L'historique reste consultable dans le back-office.
+## Mots de passe
 
-Rendu de démonstration : `/events/demo/synthese`.
+Chaque personne autorisée choisit son mot de passe : lien « Première connexion ou mot de passe oublié ? » sur la page de connexion → e-mail avec un lien signé valable 30 minutes, à usage unique (`/events/mot-de-passe`).
+
+## Pas de statut
+
+Le back-office n'affiche plus de statut : chaque rendez-vous est présenté sous forme de fiche détaillée. Seules les demandes annulées par le participant (lien de gestion du widget) ne sont plus comptées.
 
 ## Migrations à appliquer
 
 1. `supabase/migrations/202611160002_eizo_event_reports.sql`
 2. `supabase/migrations/202611160003_eizo_event_registrations.sql`
+3. `supabase/migrations/202611160004_eizo_event_access.sql`
+4. `supabase/migrations/202611160005_eizo_events_password_links.sql`
 
 ## Variables d'environnement
 

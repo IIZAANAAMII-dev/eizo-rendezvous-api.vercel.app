@@ -26,6 +26,8 @@ export type Booking = {
   created_at: string;
   /** 'registration' = inscription via formulaire Shopify (table eizo_event_registrations). */
   source?: 'booking' | 'registration';
+  /** Détails propres aux inscriptions par formulaire. */
+  company?: string | null; job_title?: string | null; slot_label?: string | null;
 };
 
 export type Query = Record<string, string | string[] | undefined>;
@@ -103,4 +105,15 @@ export function initials(name: string) {
 export function csvCell(value: string) {
   const safe = /^[\s\u0000-\u001f]*[=+@-]|^[\t\r\n]/u.test(value) ? "'" + value : value;
   return '"' + safe.replaceAll('"','""') + '"';
+}
+
+/** Une demande annulée par le client n'est plus comptée (pas d'autre notion de statut affichée). */
+export const isCounted = (row: Booking) => row.status !== 'cancelled';
+
+/** Libellé du créneau : texte saisi dans le formulaire, sinon date + heures du widget. */
+const slotDay = new Intl.DateTimeFormat('fr-FR',{timeZone:'UTC',weekday:'short',day:'numeric',month:'short'});
+export function slotText(row: Booking) {
+  if (row.slot_label) return row.slot_label;
+  if (row.source === 'registration') return 'Créneau non précisé';
+  return slotDay.format(new Date(row.date+'T12:00:00Z'))+' · '+row.start_time.slice(0,5).replace(':','h')+' – '+row.end_time.slice(0,5).replace(':','h');
 }

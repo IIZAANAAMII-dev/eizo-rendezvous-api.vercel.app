@@ -39,14 +39,24 @@ export const bookingStatusLabels: Record<Booking['status'],string> = {
   cancelled:'Annulé', completed:'Terminé', no_show:'No-show',
 };
 
+/** Organizers de test, jamais affichés dans le back-office. */
+const HIDDEN_EVENTS = new Set(['test']);
+
+/** « Équipe EIZO » + « EURONAVAL 2026 » → « EURONAVAL 2026 » ; « Fred ROL » + « ColorEdge » → « Fred ROL · ColorEdge ». */
+export function eventLabel(event: Pick<Event,'name'|'specialty'>) {
+  if (!event.specialty || event.specialty === event.name) return event.name;
+  return /\d{4}/.test(event.specialty) ? event.specialty : event.name+' · '+event.specialty;
+}
+
 export async function events(): Promise<Event[]> {
   const {data,error} = await getSupabaseClient().from('organizers')
     .select('id,slug,name,specialty,event_start_date,event_end_date,venue_name,venue_location,active')
     .order('event_start_date',{ascending:false,nullsFirst:false});
   if (error) throw new Error('Événements indisponibles');
-  const formOnly = formEvents.filter(form=>!(data ?? []).some(event=>event.slug===form.slug))
+  const rows = (data ?? []).filter(event=>!HIDDEN_EVENTS.has(event.slug)).map(event=>({...event, name:eventLabel(event)}));
+  const formOnly = formEvents.filter(form=>!rows.some(event=>event.slug===form.slug))
     .map(({day:_d,defaultStart:_s,defaultEnd:_e,...event})=>event);
-  return [...formOnly, ...(data ?? [])];
+  return [...formOnly, ...rows];
 }
 
 export async function bookings(): Promise<Booking[]> {

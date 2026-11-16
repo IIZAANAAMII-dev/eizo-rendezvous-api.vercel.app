@@ -28,7 +28,7 @@ export async function GET(request: Request, {params}: {params: Promise<{cadence:
   const test = search.get('test') === '1';
   const mode = reportMode();
   const sender = eventsReportSender(process.env.EIZO_EVENTS_REPORT_FROM)
-    ?? eventsReportSender(process.env.EMAIL_FROM) ?? eventsReportSender(process.env.SMTP_USER);
+    ?? eventsReportSender(process.env.SMTP_USER) ?? eventsReportSender(process.env.EMAIL_FROM);
   const origin = process.env.EIZO_EVENTS_REPORT_ORIGIN || 'https://eizo-rendezvous-api-vercel-app.vercel.app';
   const missing = [
     !sender && 'expéditeur @eizo.fr (EIZO_EVENTS_REPORT_FROM)',

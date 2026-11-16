@@ -39,7 +39,7 @@ export async function requestPassword(form: FormData) {
     try {
       const access = await accessFor(email.data);
       const sender = eventsReportSender(process.env.EIZO_EVENTS_REPORT_FROM)
-        ?? eventsReportSender(process.env.EMAIL_FROM) ?? eventsReportSender(process.env.SMTP_USER);
+        ?? eventsReportSender(process.env.SMTP_USER) ?? eventsReportSender(process.env.EMAIL_FROM);
       if (access && sender) {
         const link = new URL('/events/mot-de-passe',ORIGIN);
         link.searchParams.set('t',createPasswordToken(email.data));

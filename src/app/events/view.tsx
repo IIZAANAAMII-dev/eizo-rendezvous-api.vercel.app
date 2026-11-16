@@ -4,17 +4,23 @@ import { change, login } from './actions';
 import { Motion } from './motion';
 import styles from './events.module.css';
 
-const FONTS = 'https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter+Tight:wght@300;400;500;600;700;800&display=swap';
+const FONTS = 'https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@500;600;700;800&display=swap';
 
 export function Shell({children,control,who}: {children:ReactNode;control?:ReactNode;who?:ReactNode}) {
   return <div className={styles.shell}>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
     <link rel="stylesheet" href={FONTS} />
+    <script dangerouslySetInnerHTML={{__html:"try{if(sessionStorage.getItem('eizo-intro'))document.documentElement.dataset.intro='seen';else sessionStorage.setItem('eizo-intro','1')}catch(e){}"}} />
+    <div className={styles.intro} aria-hidden="true">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/media/EIZO-Logo_RGB.avif" alt="" width="200" height="80" /><span /><small>EIZO France · Events</small>
+    </div>
     <div className={styles.glow} aria-hidden="true" />
-    <div className={styles.grain} aria-hidden="true" />
     <header className={styles.topbar}>
-      <a href="/events" className={styles.brand}><span>EIZO</span><i>/</i><em>Events</em></a>
-      <span className={styles.live}><i />Données en direct</span>
+      <a href="/events" className={styles.brand}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/media/EIZO-Logo_RGB.avif" alt="EIZO" width="78" height="31" /><i /><span>Events</span></a>
+      <span className={styles.live}><i />Données en direct · Supabase</span>
       <div className={styles.topright}>{who}{control}</div>
     </header>
     <main className={styles.main}>{children}</main>
@@ -24,7 +30,8 @@ export function Shell({children,control,who}: {children:ReactNode;control?:React
 }
 
 const dayFormat = new Intl.DateTimeFormat('fr-FR',{timeZone:'Europe/Paris',day:'2-digit',month:'short'});
-const longDate = new Intl.DateTimeFormat('fr-FR',{timeZone:'Europe/Paris',weekday:'long',day:'numeric',month:'long',year:'numeric'});
+const longDateFormat = new Intl.DateTimeFormat('fr-FR',{timeZone:'Europe/Paris',weekday:'long',day:'numeric',month:'long',year:'numeric'});
+const longDate = {format:(date:Date)=>{const text=longDateFormat.format(date);return text.charAt(0).toUpperCase()+text.slice(1);}};
 const stampFormat = new Intl.DateTimeFormat('fr-FR',{timeZone:'Europe/Paris',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
 const timeFormat = new Intl.DateTimeFormat('fr-FR',{timeZone:'Europe/Paris',hour:'2-digit',minute:'2-digit'});
 
@@ -48,7 +55,7 @@ function Title({text,accent}:{text:string;accent?:string}) {
   const words = text.split(' ');
   return <h1 className={styles.title} data-reveal>
     {words.map((word,index)=><span key={index} className={styles.word}><span style={delay(index)}>{word}</span></span>)}
-    {accent && <span className={styles.word}><em style={delay(words.length)}>{accent}</em></span>}
+    {accent && <span className={styles.word}><em style={delay(words.length)}>{accent}<i>.</i></em></span>}
   </h1>;
 }
 
@@ -178,7 +185,7 @@ export function Dashboard({event,events,rows,query,admin,demo}:{
         </p> : <p>{events.length} événement{events.length>1?'s':''} suivi{events.length>1?'s':''} · {rows.length} demande{rows.length>1?'s':''} au total</p>}
         {!demo && <div className={styles.actions}>
           <a className={styles.button} href={exportBase+'&format=xlsx'} data-magnet>Export Excel <span>↓</span></a>
-          <a className={styles.ghost} href="#rendez-vous">Voir les rendez-vous</a>
+          <a className={styles.ghost} href="#rendez-vous">Voir les rendez-vous <span>↘</span></a>
         </div>}
       </div>
     </section>
@@ -188,7 +195,7 @@ export function Dashboard({event,events,rows,query,admin,demo}:{
       {events.map(item=>{
         const count = rows.filter(row=>row.organizer_id===item.id && active(row)).length;
         return <a aria-current={event?.id===item.id?'page':undefined} key={item.id} href={app+'?event='+item.slug}>
-          {item.name}{item.specialty && item.specialty!==item.name && <small>{item.specialty}</small>}<b>{count}</b></a>;})}
+          {item.name}{item.venue_name && <small>{item.venue_name}</small>}<b>{count}</b></a>;})}
     </nav>}
 
     <section className={styles.metrics}>
@@ -201,7 +208,7 @@ export function Dashboard({event,events,rows,query,admin,demo}:{
     <div className={styles.marquee} aria-hidden="true"><div>
       {Array.from({length:2},(_,copy)=><span key={copy}>
         {(event ? [event] : events).map(item=><span key={item.id}>{item.name}<i>✳</i></span>)}
-        <span>Au-delà de l’écran<i>✳</i></span><span>{rows.length} demandes suivies<i>✳</i></span>
+        <span>Au-delà de l’écran<i>✳</i></span><span>Au cœur de chaque décision<i>✳</i></span><span>{rows.length} demandes suivies<i>✳</i></span>
       </span>)}
     </div></div>
 
@@ -279,7 +286,7 @@ export function Login({refused}:{refused?:boolean}) {
       {refused && <p role="alert" className={styles.alert}>Connexion refusée.</p>}
       <label>Adresse professionnelle<input name="email" type="email" autoComplete="username" required /></label>
       <label>Mot de passe<input name="password" type="password" autoComplete="current-password" required /></label>
-      <button data-magnet>Se connecter <span>→</span></button>
+      <button data-magnet>Se connecter <span>↗</span></button>
     </form>
   </section>;
 }

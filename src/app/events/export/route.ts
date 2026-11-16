@@ -25,14 +25,14 @@ export async function GET(request: Request) {
   const bookingLine = (row:Booking) => [
     row.created_at,row.date,row.start_time,row.end_time,row.customer_name,row.customer_email,
     row.customer_phone ?? '',row.customer_need ?? '',row.customer_usage ?? '',
-    row.requested_product?.title ?? row.product_title ?? '',row.status,eventName.get(row.organizer_id) ?? '',
+    row.requested_product?.title ?? row.product_title ?? '',row.status,eventName.get(row.organizer_id) ?? '',row.customer_notes ?? '',
   ];
-  const bookingHeader = ['Demande le','Date RDV','Début','Fin','Nom','Email','Téléphone','Besoin','Usage','Produit','Statut','Événement'];
+  const bookingHeader = ['Demande le','Date RDV','Début','Fin','Nom','Email','Téléphone','Besoin','Usage','Produit','Statut','Événement','Message'];
 
   if (query.get('format') === 'xlsx') {
     const book = XLSX.utils.book_new();
     const sheet = XLSX.utils.aoa_to_sheet([bookingHeader,...periodRows.map(bookingLine)]);
-    sheet['!cols'] = [{wch:20},{wch:11},{wch:6},{wch:6},{wch:24},{wch:32},{wch:14},{wch:30},{wch:18},{wch:30},{wch:12},{wch:24}];
+    sheet['!cols'] = [{wch:20},{wch:11},{wch:6},{wch:6},{wch:24},{wch:32},{wch:14},{wch:30},{wch:18},{wch:30},{wch:12},{wch:24},{wch:40}];
     XLSX.utils.book_append_sheet(book,sheet,'Rendez-vous');
     const weeks = new Map<string,number>();
     for (const row of scoped) {

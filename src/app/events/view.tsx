@@ -191,13 +191,14 @@ export function Dashboard({event,events,rows,query,admin,demo}:{
           <td><strong>{row.customer_name}</strong>
             <small>{row.customer_email}{row.customer_phone ? ' · '+row.customer_phone : ''}</small>
             {(row.customer_need || row.customer_usage) && <small>{[row.customer_need,row.customer_usage].filter(Boolean).join(' · ')}</small>}
+            {row.customer_notes && <small>« {row.customer_notes} »</small>}
           </td>
           {!event && <td>{eventName.get(row.organizer_id) ?? '—'}</td>}
           <td>{formatSlot(row)}</td>
           <td><span className={styles['status-'+row.status]}>{bookingStatusLabels[row.status]}</span></td>
           <td>{row.requested_product?.title || row.product_title || '—'}</td>
           {!demo && admin && <td><details><summary>Statut</summary><form action={change}>
-            <input type="hidden" name="action" value="status"/><input type="hidden" name="id" value={row.id}/>
+            <input type="hidden" name="action" value="status"/><input type="hidden" name="id" value={row.id}/><input type="hidden" name="source" value={row.source ?? 'booking'}/>
             {event && <input type="hidden" name="event" value={event.slug}/>}
             {!event && <input type="hidden" name="vue" value="global"/>}
             <label>Statut<select name="status" defaultValue={row.status}>

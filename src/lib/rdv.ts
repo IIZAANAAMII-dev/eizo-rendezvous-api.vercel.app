@@ -1,6 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import { getSupabaseClient } from './supabase';
+import { formEvents, registrationBookings } from './registrations';
 
 export const slug = z.string().max(80).regex(/^[a-z0-9]+(-[a-z0-9]+)*$/);
 export function secretMatches(received: string, expected?: string) {
@@ -23,6 +24,8 @@ export type Booking = {
   requested_product: { title?: string } | null; product_title: string | null;
   status: 'pending'|'confirmed'|'refused'|'cancelled'|'completed'|'no_show';
   created_at: string;
+  /** 'registration' = inscription via formulaire Shopify (table eizo_event_registrations). */
+  source?: 'booking' | 'registration';
 };
 
 export type Query = Record<string, string | string[] | undefined>;
@@ -41,10 +44,17 @@ export async function events(): Promise<Event[]> {
     .select('id,slug,name,specialty,event_start_date,event_end_date,venue_name,venue_location,active')
     .order('event_start_date',{ascending:false,nullsFirst:false});
   if (error) throw new Error('Événements indisponibles');
-  return data ?? [];
+  const formOnly = formEvents.filter(form=>!(data ?? []).some(event=>event.slug===form.slug))
+    .map(({day:_d,defaultStart:_s,defaultEnd:_e,...event})=>event);
+  return [...formOnly, ...(data ?? [])];
 }
 
 export async function bookings(): Promise<Booking[]> {
+  const [widget, forms] = await Promise.all([widgetBookings(), registrationBookings()]);
+  return [...widget, ...forms].sort((a,b)=>b.created_at.localeCompare(a.created_at));
+}
+
+async function widgetBookings(): Promise<Booking[]> {
   const rows: Booking[] = [];
   for (let start = 0; ; start += 1000) {
     const {data,error} = await getSupabaseClient().from('bookings')

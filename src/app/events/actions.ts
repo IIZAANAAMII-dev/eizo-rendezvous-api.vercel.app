@@ -29,8 +29,10 @@ export async function change(form: FormData) {
   try {
     const id = z.string().uuid().parse(form.get('id'));
     const status = z.enum(bookingStatuses).parse(form.get('status'));
-    const {data,error} = await getSupabaseClient().from('bookings')
-      .update({status}).eq('id',id).select('id').single();
+    const table = form.get('source') === 'registration' ? 'eizo_event_registrations' : 'bookings';
+    const changes = table === 'bookings' ? {status} : {status, updated_at:new Date().toISOString()};
+    const {data,error} = await getSupabaseClient().from(table)
+      .update(changes).eq('id',id).select('id').single();
     if (error || !data) throw error ?? new Error();
   } catch {
     redirect(back+'&notice=invalide');

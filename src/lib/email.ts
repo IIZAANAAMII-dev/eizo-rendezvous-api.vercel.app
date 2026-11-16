@@ -596,6 +596,19 @@ interface SendEmailPayload {
   subject: string;
   html: string;
   senderName?: string;
+  senderAddress?: string;
+}
+
+export function eventsReportSender(value: string | undefined) {
+  const sender = value?.trim().toLowerCase();
+  return sender && /^[a-z0-9][a-z0-9._+-]*@eizo\.fr$/.test(sender) ? sender : null;
+}
+
+export async function sendEventsReport(recipients: string[], message: { subject: string; html: string }, sender: string) {
+  const from = eventsReportSender(sender);
+  if (!from) throw new Error('Expéditeur EIZO invalide');
+  for (const to of recipients)
+    await sendWithSmtp({ to, from, subject: message.subject, html: message.html, senderName:'EIZO Events', senderAddress:from });
 }
 
 async function sendEmail(payload: SendEmailPayload): Promise<void> {
@@ -629,7 +642,7 @@ async function sendWithSmtp(payload: SendEmailPayload): Promise<void> {
 
   const senderName = payload.senderName || 'EIZO ColorEdge';
   await transporter.sendMail({
-    from: { name: senderName, address: process.env.SMTP_USER || payload.from },
+    from: { name: senderName, address: payload.senderAddress || process.env.SMTP_USER || payload.from },
     to: payload.to,
     subject: payload.subject,
     html: payload.html,

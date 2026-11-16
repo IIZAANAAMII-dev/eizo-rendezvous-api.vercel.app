@@ -42,6 +42,20 @@ Vercel Cron (`vercel.json`) appelle chaque matin à 07:00 UTC `GET /api/events/r
 - **Mode production** : `EIZO_EVENTS_REPORT_MODE=production` dans Vercel.
 - **Test immédiat** : `curl -H "Authorization: Bearer $CRON_SECRET" ".../api/events/reports/2jours?test=1"` (ajouter `&as=adresse` pour la vue d'une personne).
 
+## Administration (depuis le back-office)
+
+Les admins disposent, en bas du tableau de bord, de :
+
+- **Synthèse e-mail** : mode (test = moi seul / équipe), prochain envoi, dernier envoi prévu, historique ; bouton « M'envoyer un aperçu maintenant » (éventuellement dans la version d'une autre personne) ; bouton pour envoyer la synthèse à toute l'équipe (avec confirmation) ou repasser en test. Le réglage est stocké dans `eizo_event_settings` (`report_mode`) et n'agit que sur le déploiement de production.
+- **Équipe** : liste des accès, état du compte (pas encore invité / compte créé / dernière connexion) et bouton « Inviter » qui envoie un lien (7 jours, usage unique) pour choisir son mot de passe.
+- **Fiches** : « Compléter la fiche » sur chaque inscription (entreprise, fonction, téléphone, créneau, message) et « Ajouter une inscription » (appel, salon…). Une réinscription via le formulaire ne vide jamais un champ déjà complété.
+
+## Fiabilité
+
+- Capture : chaque inscription est gardée dans le navigateur jusqu'à confirmation du serveur, et renvoyée à la visite suivante sinon.
+- API publique : origines eizo.fr uniquement, 20 envois/heure/IP au maximum (`eizo_event_ingest_log`, IP hachée).
+- Sessions : renouvelées automatiquement (`src/middleware.ts`), connexion valable 14 jours.
+
 ## Mots de passe
 
 Chaque personne autorisée choisit son mot de passe : lien « Première connexion ou mot de passe oublié ? » sur la page de connexion → e-mail avec un lien signé valable 30 minutes, à usage unique (`/events/mot-de-passe`).
@@ -56,6 +70,7 @@ Le back-office n'affiche plus de statut : chaque rendez-vous est présenté sous
 2. `supabase/migrations/202611160003_eizo_event_registrations.sql`
 3. `supabase/migrations/202611160004_eizo_event_access.sql`
 4. `supabase/migrations/202611160005_eizo_events_password_links.sql`
+5. `supabase/migrations/202611160006_eizo_events_settings_and_rate_limit.sql`
 
 ## Variables d'environnement
 

@@ -1,14 +1,34 @@
+import { createHmac } from 'node:crypto';
+import { getSupabaseClient } from '@/lib/supabase';
 import { formEvents, registrationInput, saveRegistration } from '@/lib/registrations';
 
-// Reçoit les inscriptions du formulaire Shopify (Globo) des pages événement,
-// envoyées par le script `shopify-rencontre-2026-capture.html` (navigator.sendBeacon).
+// Reçoit les inscriptions du formulaire Shopify (Globo) des pages événement, envoyées par
+// public/eizo-events-capture.js. Protections : origines eizo.fr uniquement, taille limitée,
+// champ piège, et au plus 20 envois par heure et par adresse IP (journal anonymisé).
 const ORIGINS = new Set(['https://eizo.fr', 'https://www.eizo.fr', 'https://eizo-france.myshopify.com']);
+const PER_HOUR = 20;
 
 function headers(origin: string | null): Record<string, string> {
   return origin && ORIGINS.has(origin)
     ? { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type', 'Cache-Control': 'no-store', Vary: 'Origin' }
     : { 'Cache-Control': 'no-store', Vary: 'Origin' };
+}
+
+/** Compte l'envoi ; refuse au-delà de PER_HOUR par IP. Ne bloque jamais en cas d'incident. */
+async function allowed(request: Request) {
+  const ip = (request.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'inconnue';
+  const hash = createHmac('sha256', process.env.CRON_SECRET || 'eizo-events').update(ip).digest('hex').slice(0, 32);
+  const client = getSupabaseClient();
+  const since = new Date(Date.now() - 3_600_000).toISOString();
+  try {
+    const { count } = await client.from('eizo_event_ingest_log').select('id', { count: 'exact', head: true })
+      .eq('ip_hash', hash).gte('created_at', since);
+    if ((count ?? 0) >= PER_HOUR) return false;
+    await client.from('eizo_event_ingest_log').insert({ ip_hash: hash });
+    if (Math.random() < .05) await client.from('eizo_event_ingest_log').delete().lt('created_at', new Date(Date.now() - 86_400_000).toISOString());
+  } catch { /* journal indisponible : on laisse passer */ }
+  return true;
 }
 
 export function OPTIONS(request: Request) {
@@ -31,6 +51,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
   if (body && typeof body.website === 'string' && body.website) return new Response(null, { status: 204, headers: cors });
   const parsed = registrationInput.safeParse(body);
   if (!parsed.success) return Response.json({ error: 'Inscription invalide' }, { status: 400, headers: cors });
+  if (!await allowed(request)) return Response.json({ error: 'Trop de demandes, réessayez plus tard' }, { status: 429, headers: cors });
 
   try {
     await saveRegistration(slug, parsed.data);

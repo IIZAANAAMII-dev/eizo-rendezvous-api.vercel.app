@@ -28,6 +28,8 @@ export type Booking = {
   source?: 'booking' | 'registration';
   /** Détails propres aux inscriptions par formulaire. */
   company?: string | null; job_title?: string | null; slot_label?: string | null;
+  /** Provenance d'une inscription : globo, globo-import:<id>, manuel:<admin>. */
+  origin?: string; first_name?: string; last_name?: string;
 };
 
 export type Query = Record<string, string | string[] | undefined>;

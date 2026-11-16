@@ -34,6 +34,8 @@ Une personne ne voit **que** les rendez-vous de ses événements : tableau de bo
 
 Vercel Cron (`vercel.json`) appelle chaque matin à 07:00 UTC `GET /api/events/reports/2jours` ; la synthèse ne part **qu'un jour sur deux** et couvre les deux jours précédents (heure de Paris). Chaque destinataire (`eizo_event_access.weekly_report = true`) reçoit uniquement ses événements, avec la fiche détaillée de chaque nouvelle demande (entreprise, fonction, contact, créneau, produit, message) et le lien vers le back-office.
 
+**Contenu** : uniquement les Rencontres EIZO (`EIZO_EVENTS_REPORT_EVENTS`, défaut `rencontre-2026`) — compte à rebours, chiffres clés, courbe des 14 derniers jours, créneaux avec les noms, fiche complète de chaque nouvel inscrit et liste intégrale des inscrits.
+
 **Arrêt automatique** : seuls les événements datés sont suivis, jusqu'à 2 jours après leur fin (Rencontres EIZO : dernière synthèse le 05/12/2026, puis plus rien). Rien à désactiver à la main.
 
 - **Mode dev (défaut)** : envoi uniquement à `klegarrec@feeder.fr`, objet préfixé `[DEV]`.

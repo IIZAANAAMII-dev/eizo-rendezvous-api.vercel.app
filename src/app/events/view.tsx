@@ -18,6 +18,10 @@ export function Dashboard({event,events,rows,query,admin,demo}:{
   const max = Math.max(1,...series.map(([,count])=>count));
   const today = period(new Date(),false);
   const week = period(new Date(),true);
+  const lastWeek = new Date(week);
+  lastWeek.setUTCDate(lastWeek.getUTCDate()-7);
+  const currentWeekCount = rows.filter(row=>period(new Date(row.registered_at),true)===week).length;
+  const lastWeekCount = rows.filter(row=>period(new Date(row.registered_at),true)===lastWeek.toISOString().slice(0,10)).length;
   const search = query.q?.trim().toLowerCase() ?? '';
   const matches = rows.filter(row =>
     (!query.status || query.status===row.status) &&
@@ -42,9 +46,11 @@ export function Dashboard({event,events,rows,query,admin,demo}:{
       <div className={styles.metrics}>{[
         ['Inscriptions',rows.length],
         ['Aujourd’hui',rows.filter(r=>period(new Date(r.registered_at),false)===today).length],
-        ['Cette semaine',rows.filter(r=>period(new Date(r.registered_at),true)===week).length],
+        ['Cette semaine',currentWeekCount],
         ['Entreprises',new Set(rows.map(r=>r.company.trim().toLowerCase()).filter(Boolean)).size],
-      ].map(([label,value])=><div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>
+      ].map(([label,value])=><div key={label}><span>{label}</span><strong>{value}</strong>
+        {label==='Cette semaine' && <small>Semaine précédente · {lastWeekCount}</small>}
+      </div>)}</div>
       <section className={styles.card}><div className={styles.heading}><h2>Évolution des inscriptions</h2>
         <nav><a aria-current={!weekly?'page':undefined} href={base+'&period=jour'}>Jour</a><a aria-current={weekly?'page':undefined} href={base+'&period=semaine'}>Semaine</a></nav></div>
         {series.length ? <div className={styles.chart}>{series.map(([date,count])=><div key={date}>

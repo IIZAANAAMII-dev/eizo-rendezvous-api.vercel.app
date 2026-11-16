@@ -596,13 +596,14 @@ interface SendEmailPayload {
   subject: string;
   html: string;
   senderName?: string;
+  senderAddress?: string;
 }
 
 export async function sendEventsReport(recipients: string[], message: { subject: string; html: string }) {
-  const from = process.env.SMTP_USER;
-  if (!from) throw new Error('SMTP non configuré');
+  const from = process.env.EIZO_EVENTS_REPORT_FROM?.trim();
+  if (!from || !/^no-?reply@eizo\.fr$/i.test(from)) throw new Error('Adresse no-reply EIZO non configurée');
   for (const to of recipients)
-    await sendWithSmtp({ to, from, subject: message.subject, html: message.html, senderName:'EIZO Events' });
+    await sendWithSmtp({ to, from, subject: message.subject, html: message.html, senderName:'EIZO Events', senderAddress:from });
 }
 
 async function sendEmail(payload: SendEmailPayload): Promise<void> {
@@ -636,7 +637,7 @@ async function sendWithSmtp(payload: SendEmailPayload): Promise<void> {
 
   const senderName = payload.senderName || 'EIZO ColorEdge';
   await transporter.sendMail({
-    from: { name: senderName, address: process.env.SMTP_USER || payload.from },
+    from: { name: senderName, address: payload.senderAddress || process.env.SMTP_USER || payload.from },
     to: payload.to,
     subject: payload.subject,
     html: payload.html,

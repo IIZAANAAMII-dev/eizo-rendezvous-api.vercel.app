@@ -48,6 +48,7 @@
 .hero .demo {color:#c9c8ff;margin:0 0 18px;}
 .hero a {display:inline-block;color:white;font-size:13px;border-bottom:1px solid #a9aaff;padding-bottom:3px;}
 .metrics strong {font-variant-numeric:tabular-nums;font-size:clamp(26px,4vw,43px);letter-spacing:-.065em;}
+.metrics small {display:block;color:#4b5d77;font-size:11px;}
 .chart span {background:linear-gradient(180deg,#7067f2,#3c3a9c);}
 @media(max-width:740px) {
   .grid {grid-template-columns:1fr;gap:10px;}

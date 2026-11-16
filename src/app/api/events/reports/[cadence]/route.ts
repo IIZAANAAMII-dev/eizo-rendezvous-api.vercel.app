@@ -14,6 +14,7 @@ export async function GET(request: Request, {params}: {params: Promise<{cadence:
   const source = slug.safeParse(process.env.EIZO_EVENTS_REPORT_EVENT);
   const origin = process.env.EIZO_EVENTS_REPORT_ORIGIN;
   if (!cadence.success || !recipients.success || !source.success || !origin ||
+    !/^no-?reply@eizo\.fr$/i.test(process.env.EIZO_EVENTS_REPORT_FROM?.trim() ?? '') ||
     !process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASSWORD)
     return Response.json({error:'Rapports non configurés'},{status:503});
   try {

@@ -30,3 +30,5 @@ Le rendu fictif est disponible à `/events/demo/synthese`. Pour activer les e-ma
 Programmer des GET authentifiés par `Authorization: Bearer <CRON_SECRET>` sur `/api/events/reports/jour` chaque matin et `/api/events/reports/semaine` le lundi matin, dans le fuseau Europe/Paris. Les rapports portent sur la veille ou la semaine complète précédente. Ils contiennent uniquement des chiffres agrégés et un lien vers le tableau de bord privé.
 
 Une période est réservée en base avant l’envoi pour éviter deux envois simultanés. Si l’envoi échoue après réservation, vérifier la remise auprès du fournisseur SMTP et l’état `sent_at` avant toute relance manuelle. Planifier les déclenchements après la validation du premier envoi avec une adresse de test.
+
+Configurer `EIZO_EVENTS_REPORT_FROM` avec l’adresse no-reply du domaine `eizo.fr` autorisée par le serveur SMTP. Vérifier le droit d’envoi de cette adresse, puis les en-têtes de remise lors d’un test individuel. Les e-mails de réservation conservent leur configuration d’origine.

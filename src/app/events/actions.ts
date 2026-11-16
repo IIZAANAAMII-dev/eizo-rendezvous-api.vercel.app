@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { getSupabaseClient } from '@/lib/supabase';
-import { eventRole } from '@/lib/events-access';
+import { eventAccess, eventRole } from '@/lib/events-access';
 import { bookingStatuses } from '@/lib/rdv';
 
 export async function login(form: FormData) {
@@ -23,13 +23,23 @@ export async function logout() {
   redirect('/events');
 }
 export async function change(form: FormData) {
-  const role = await eventRole((await cookies()).get('eizo-events')?.value);
-  if (role !== 'admin') redirect('/events?notice=autorisation');
+  const access = await eventAccess((await cookies()).get('eizo-events')?.value);
+  if (access?.role !== 'admin') redirect('/events?notice=autorisation');
   const back = form.get('event') ? '/events?event='+String(form.get('event')) : '/events?vue=global';
   try {
     const id = z.string().uuid().parse(form.get('id'));
+    const registration = form.get('source') === 'registration';
+    // Vérifie que le rendez-vous appartient à un événement visible par cette personne.
+    if (access.events !== '*') {
+      const client = getSupabaseClient();
+      const slug = registration
+        ? (await client.from('eizo_event_registrations').select('event_slug').eq('id',id).single()).data?.event_slug
+        : (await client.from('bookings').select('organizers(slug)').eq('id',id).single()).data?.organizers as unknown as {slug:string}|null;
+      const eventSlug = typeof slug === 'string' ? slug : slug?.slug;
+      if (!eventSlug || !access.events.includes(eventSlug)) throw new Error('hors périmètre');
+    }
     const status = z.enum(bookingStatuses).parse(form.get('status'));
-    const table = form.get('source') === 'registration' ? 'eizo_event_registrations' : 'bookings';
+    const table = registration ? 'eizo_event_registrations' : 'bookings';
     const changes = table === 'bookings' ? {status} : {status, updated_at:new Date().toISOString()};
     const {data,error} = await getSupabaseClient().from(table)
       .update(changes).eq('id',id).select('id').single();

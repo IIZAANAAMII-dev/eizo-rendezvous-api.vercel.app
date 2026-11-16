@@ -1,9 +1,8 @@
 import { cookies } from 'next/headers';
-import { getSupabaseClient } from '@/lib/supabase';
-import { eventRole } from '@/lib/events-access';
+import { eventAccess, scopeTo } from '@/lib/events-access';
 import { bookings, events, type Query, singleValues } from '@/lib/rdv';
-import { login, logout } from './actions';
-import { Dashboard, Shell } from './view';
+import { logout } from './actions';
+import { Dashboard, Login, Shell } from './view';
 import styles from './events.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -11,21 +10,18 @@ export const metadata = { title:'EIZO Events', robots:{index:false,follow:false}
 
 export default async function Page({searchParams}: {searchParams:Promise<Query>}) {
   const query = singleValues(await searchParams);
-  const ready = process.env.EIZO_EVENTS_USERS && process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!ready) return <Shell><section><h1>Accès équipe</h1><p>Le service de connexion doit être configuré.</p></section></Shell>;
-  const role = await eventRole((await cookies()).get('eizo-events')?.value);
-  if (!role) return <Shell><section className={styles.login}><h1>Accès équipe</h1>
-    {query.notice === 'connexion' && <p role="alert">Connexion refusée.</p>}
-    <form action={login}>
-      <label>Adresse professionnelle<input name="email" type="email" autoComplete="username" required /></label>
-      <label>Mot de passe<input name="password" type="password" autoComplete="current-password" required /></label>
-      <button>Se connecter</button>
-    </form>
-  </section></Shell>;
-  const [list, rows] = await Promise.all([events(), bookings()]);
-  const current = query.event ? list.find(event=>event.slug===query.event) : undefined;
-  return <Shell control={<form action={logout}><button>Déconnexion</button></form>}>
-    {query.notice && <p role="status">{query.notice==='enregistre' ? 'Modifications enregistrées.' : 'Action refusée ou données invalides.'}</p>}
-    <Dashboard events={list} event={current} rows={rows} query={query} admin={role==='admin'} />
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY)
+    return <Shell><section className={styles.login}><h1 className={styles.title}>Service non configuré</h1></section></Shell>;
+  const access = await eventAccess((await cookies()).get('eizo-events')?.value);
+  if (!access) return <Shell><Login refused={query.notice === 'connexion'} /></Shell>;
+  const [allEvents, allRows] = await Promise.all([events(), bookings()]);
+  // Chaque personne ne voit que les événements qui lui sont attribués (table eizo_event_access).
+  const {events:list, rows} = scopeTo(access, allEvents, allRows);
+  const current = query.event ? list.find(event=>event.slug===query.event) : (list.length===1 ? list[0] : undefined);
+  return <Shell
+    who={<span className={styles.who}>{access.email}<b>{access.role==='admin' ? 'Admin' : 'Lecture'}</b></span>}
+    control={<form action={logout}><button className={styles.logout}>Déconnexion</button></form>}>
+    {query.notice && query.notice!=='connexion' && <p role="status" className={styles.notice}>{query.notice==='enregistre' ? 'Modifications enregistrées.' : 'Action refusée ou données invalides.'}</p>}
+    <Dashboard events={list} event={current} rows={rows} query={query} admin={access.role==='admin'} />
   </Shell>;
 }

@@ -3,28 +3,31 @@ import { getSupabaseClient } from '@/lib/supabase';
 import { bookings, events, secretMatches, weekKey, dayKey } from '@/lib/rdv';
 import { bookingReport } from '@/lib/rdv-report';
 import { eventsReportSender, sendEventsReport } from '@/lib/email';
-import { reportRecipients } from '@/lib/report-recipients';
+import { reportMode } from '@/lib/report-recipients';
+import { accessFor, reportAudience, scopeTo, type Access } from '@/lib/events-access';
 
 export const dynamic = 'force-dynamic';
 
 // Appelée par Vercel Cron (vercel.json) chaque lundi, avec « Authorization: Bearer $CRON_SECRET ».
-// Mode dev (par défaut) : la synthèse part uniquement à klegarrec@feeder.fr.
-// Mode production (EIZO_EVENTS_REPORT_MODE=production) : à toute l'équipe.
-// Test manuel immédiat (toujours au seul développeur) : GET ...?test=1 avec le même en-tête.
-// Après l'événement : retirer le cron de vercel.json pour arrêter les envois.
+// Chaque destinataire reçoit une synthèse limitée aux événements qu'il a le droit de voir
+// (table eizo_event_access).
+// Mode dev (par défaut) : seule la synthèse de klegarrec@feeder.fr est envoyée, à lui seul.
+// Mode production (EIZO_EVENTS_REPORT_MODE=production) : à toutes les lignes weekly_report.
+// Test immédiat (toujours envoyé au seul développeur) : ?test=1, et &as=<email> pour
+// recevoir la version telle que cette personne la verrait.
 export async function GET(request: Request, {params}: {params: Promise<{cadence:string}>}) {
   const secret = process.env.CRON_SECRET;
   if (!secret || secret.length<32 || !secretMatches(request.headers.get('authorization') ?? '', 'Bearer '+secret))
     return Response.json({error:'Accès refusé'},{status:401});
   const cadence = z.enum(['jour','semaine']).safeParse((await params).cadence);
   if (!cadence.success) return Response.json({error:'Cadence inconnue'},{status:404});
-  const test = new URL(request.url).searchParams.get('test') === '1';
-  const target = test ? reportRecipients({...process.env, EIZO_EVENTS_REPORT_MODE:'dev'}) : reportRecipients();
+  const search = new URL(request.url).searchParams;
+  const test = search.get('test') === '1';
+  const mode = reportMode();
   const sender = eventsReportSender(process.env.EIZO_EVENTS_REPORT_FROM)
     ?? eventsReportSender(process.env.EMAIL_FROM) ?? eventsReportSender(process.env.SMTP_USER);
   const origin = process.env.EIZO_EVENTS_REPORT_ORIGIN || 'https://eizo-rendezvous-api-vercel-app.vercel.app';
   const missing = [
-    !target.recipients && 'destinataires',
     !sender && 'expéditeur @eizo.fr (EIZO_EVENTS_REPORT_FROM)',
     !(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASSWORD) && 'SMTP',
   ].filter(Boolean);
@@ -35,28 +38,51 @@ export async function GET(request: Request, {params}: {params: Promise<{cadence:
     const now = new Date();
     // La synthèse hebdomadaire part le lundi (heure de Paris) : les autres jours on ignore.
     if (!test && cadence.data==='semaine' && dayKey(now) !== weekKey(now)) return Response.json({skipped:'pas lundi'});
-    const [list, rows] = await Promise.all([events(), bookings()]);
-    const report = bookingReport(rows,list,cadence.data,now,link);
-    const message = target.production ? report : {...report, subject:'[DEV] '+report.subject};
-    const scope = target.production ? 'global' : 'global-dev';
-    const key = {scope,cadence:cadence.data,period_start:report.key};
+
+    // Qui reçoit quoi : [adresse de livraison, périmètre utilisé pour construire le mail].
+    let deliveries: [string, Access][];
+    if (test || !mode.production) {
+      const viewer = await accessFor(z.string().email().safeParse(search.get('as')).data ?? mode.dev);
+      if (!viewer) return Response.json({error:'Aucun accès configuré pour cette adresse'},{status:404});
+      deliveries = [[mode.dev, viewer]];
+    } else {
+      deliveries = (await reportAudience()).map(access=>[access.email, access]);
+    }
+
+    const [allEvents, allRows] = await Promise.all([events(), bookings()]);
+    const scope = mode.production && !test ? 'global' : 'global-dev';
+    const periodKey = bookingReport([],[],cadence.data,now,link).key;
+    const key = {scope,cadence:cadence.data,period_start:periodKey};
     if (!test) {
       const claim = await getSupabaseClient().from('eizo_event_reports').insert(key);
       if (claim.error?.code==='23505') return Response.json({skipped:'déjà envoyé'});
       if (claim.error) throw claim.error;
     }
-    try {
-      await sendEventsReport(target.recipients!,message,sender!);
-    } catch (error) {
-      // Libère la période pour qu'un nouvel appel puisse réessayer.
-      if (!test) await getSupabaseClient().from('eizo_event_reports').delete().match(key);
-      throw error;
+    const failures: string[] = [];
+    for (const [to, access] of deliveries) {
+      const scoped = scopeTo(access, allEvents, allRows);
+      if (!scoped.events.length) continue;
+      const report = bookingReport(scoped.rows, scoped.events, cadence.data, now, link);
+      const subject = (mode.production && !test ? '' : '[DEV] ') + report.subject +
+        (test && access.email !== to ? ' · vue de '+access.email : '');
+      try {
+        await sendEventsReport([to], {...report, subject}, sender!);
+      } catch (error) {
+        console.error('[events] synthèse non envoyée à', to, error);
+        failures.push(to);
+      }
     }
     if (!test) {
+      if (failures.length === deliveries.length && deliveries.length) {
+        // Rien n'est parti : on libère la période pour permettre un nouvel essai.
+        await getSupabaseClient().from('eizo_event_reports').delete().match(key);
+        throw new Error('Aucun envoi réussi');
+      }
       const updated = await getSupabaseClient().from('eizo_event_reports').update({sent_at:new Date().toISOString()}).match(key);
       if (updated.error) throw updated.error;
     }
-    return Response.json({sent:true, mode:target.production?'production':'dev', recipients:target.recipients!.length, test});
+    return Response.json({sent:deliveries.length-failures.length, failed:failures.length,
+      mode:mode.production && !test ? 'production' : 'dev', test});
   } catch (error) {
     console.error('[events] synthèse non envoyée', error);
     return Response.json({error:'Rapport indisponible'},{status:503});

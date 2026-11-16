@@ -1,17 +1,18 @@
 import { cookies } from 'next/headers';
 import * as XLSX from 'xlsx';
-import { eventRole } from '@/lib/events-access';
+import { eventAccess, scopeTo } from '@/lib/events-access';
 import { bookings, csvCell, events, inWeek, slug, totals, weekKey, type Booking } from '@/lib/rdv';
 
 const headers = {'Cache-Control':'private, no-store'};
 
 export async function GET(request: Request) {
-  if (!await eventRole((await cookies()).get('eizo-events')?.value))
-    return new Response('Accès refusé',{status:401,headers});
+  const access = await eventAccess((await cookies()).get('eizo-events')?.value);
+  if (!access) return new Response('Accès refusé',{status:401,headers});
   const query = new URL(request.url).searchParams;
   const scope = slug.safeParse(query.get('event'));
   if (query.get('event') && !scope.success) return new Response('Événement invalide',{status:400,headers});
-  const [list, rows] = await Promise.all([events(), bookings()]);
+  const [allEvents, allRows] = await Promise.all([events(), bookings()]);
+  const {events:list, rows} = scopeTo(access, allEvents, allRows);
   const scoped = scope.success ? rows.filter(row=>{
     const event = list.find(item=>item.slug===scope.data);
     return event && row.organizer_id===event.id;

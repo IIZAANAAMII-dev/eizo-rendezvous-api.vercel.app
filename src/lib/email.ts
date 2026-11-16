@@ -599,9 +599,14 @@ interface SendEmailPayload {
   senderAddress?: string;
 }
 
-export async function sendEventsReport(recipients: string[], message: { subject: string; html: string }) {
-  const from = process.env.EIZO_EVENTS_REPORT_FROM?.trim();
-  if (!from || !/^no-?reply@eizo\.fr$/i.test(from)) throw new Error('Adresse no-reply EIZO non configurée');
+export function eventsReportSender(value: string | undefined) {
+  const sender = value?.trim().toLowerCase();
+  return sender && /^[a-z0-9][a-z0-9._+-]*@eizo\.fr$/.test(sender) ? sender : null;
+}
+
+export async function sendEventsReport(recipients: string[], message: { subject: string; html: string }, sender: string) {
+  const from = eventsReportSender(sender);
+  if (!from) throw new Error('Expéditeur EIZO invalide');
   for (const to of recipients)
     await sendWithSmtp({ to, from, subject: message.subject, html: message.html, senderName:'EIZO Events', senderAddress:from });
 }

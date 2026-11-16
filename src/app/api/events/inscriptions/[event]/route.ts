@@ -4,9 +4,11 @@ import { formEvents, registrationInput, saveRegistration } from '@/lib/registrat
 
 // Reçoit les inscriptions du formulaire Shopify (Globo) des pages événement, envoyées par
 // public/eizo-events-capture.js. Protections : origines eizo.fr uniquement, taille limitée,
-// champ piège, et au plus 20 envois par heure et par adresse IP (journal anonymisé).
+// champ piège, au plus 20 envois par heure et par adresse IP (journal anonymisé) et
+// 200 par heure au total, même si les adresses IP changent.
 const ORIGINS = new Set(['https://eizo.fr', 'https://www.eizo.fr', 'https://eizo-france.myshopify.com']);
 const PER_HOUR = 20;
+const GLOBAL_PER_HOUR = 200;
 
 function headers(origin: string | null): Record<string, string> {
   return origin && ORIGINS.has(origin)
@@ -22,9 +24,11 @@ async function allowed(request: Request) {
   const client = getSupabaseClient();
   const since = new Date(Date.now() - 3_600_000).toISOString();
   try {
-    const { count } = await client.from('eizo_event_ingest_log').select('id', { count: 'exact', head: true })
-      .eq('ip_hash', hash).gte('created_at', since);
-    if ((count ?? 0) >= PER_HOUR) return false;
+    const [mine, all] = await Promise.all([
+      client.from('eizo_event_ingest_log').select('id', { count: 'exact', head: true }).eq('ip_hash', hash).gte('created_at', since),
+      client.from('eizo_event_ingest_log').select('id', { count: 'exact', head: true }).gte('created_at', since),
+    ]);
+    if ((mine.count ?? 0) >= PER_HOUR || (all.count ?? 0) >= GLOBAL_PER_HOUR) return false;
     await client.from('eizo_event_ingest_log').insert({ ip_hash: hash });
     if (Math.random() < .05) await client.from('eizo_event_ingest_log').delete().lt('created_at', new Date(Date.now() - 86_400_000).toISOString());
   } catch { /* journal indisponible : on laisse passer */ }

@@ -53,7 +53,7 @@ Les admins disposent, en bas du tableau de bord, de :
 ## Fiabilité
 
 - Capture : chaque inscription est gardée dans le navigateur jusqu'à confirmation du serveur, et renvoyée à la visite suivante sinon.
-- API publique : origines eizo.fr uniquement, 20 envois/heure/IP au maximum (`eizo_event_ingest_log`, IP hachée).
+- API publique : origines eizo.fr uniquement, 20 envois/heure/IP et 200/heure au total au maximum (`eizo_event_ingest_log`, IP hachée).
 - Sessions : renouvelées automatiquement (`src/middleware.ts`), connexion valable 14 jours.
 
 ## Mots de passe

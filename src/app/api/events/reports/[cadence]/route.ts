@@ -22,7 +22,7 @@ export async function GET(request: Request, {params}: {params: Promise<{cadence:
   const target = test ? reportRecipients({...process.env, EIZO_EVENTS_REPORT_MODE:'dev'}) : reportRecipients();
   const sender = eventsReportSender(process.env.EIZO_EVENTS_REPORT_FROM)
     ?? eventsReportSender(process.env.EMAIL_FROM) ?? eventsReportSender(process.env.SMTP_USER);
-  const origin = process.env.EIZO_EVENTS_REPORT_ORIGIN || 'https://eizo-rendezvous-api.vercel.app';
+  const origin = process.env.EIZO_EVENTS_REPORT_ORIGIN || 'https://eizo-rendezvous-api-vercel-app.vercel.app';
   const missing = [
     !target.recipients && 'destinataires',
     !sender && 'expéditeur @eizo.fr (EIZO_EVENTS_REPORT_FROM)',

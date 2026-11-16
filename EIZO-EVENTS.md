@@ -31,7 +31,7 @@ Vercel Cron (`vercel.json`) appelle `GET /api/events/reports/semaine` chaque lun
 - **Mode dev (par défaut)** : envoi uniquement à `klegarrec@feeder.fr` (ou `EIZO_EVENTS_REPORT_DEV_TO`), objet préfixé `[DEV]`.
 - **Mode production** : `EIZO_EVENTS_REPORT_MODE=production` sur le déploiement de production → envoi à l'équipe (liste dans `src/lib/report-recipients.ts`, ou `EIZO_EVENTS_REPORT_TO`).
 - **Test immédiat** (toujours au seul développeur, sans attendre lundi) :
-  `curl -H "Authorization: Bearer $CRON_SECRET" "https://eizo-rendezvous-api.vercel.app/api/events/reports/semaine?test=1"`
+  `curl -H "Authorization: Bearer $CRON_SECRET" "https://eizo-rendezvous-api-vercel-app.vercel.app/api/events/reports/semaine?test=1"`
 
 Variables requises : `CRON_SECRET` (≥ 32 caractères), `EIZO_EVENTS_REPORT_FROM` (adresse `@eizo.fr` acceptée par le SMTP ; à défaut `EMAIL_FROM` puis `SMTP_USER`), SMTP déjà configuré. Un envoi par semaine et par mode, tracé dans `eizo_event_reports`.
 

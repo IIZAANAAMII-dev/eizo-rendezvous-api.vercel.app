@@ -1,8 +1,12 @@
 import { z } from 'zod';
 import { getSupabaseClient } from '@/lib/supabase';
-import { participants, secretMatches, slug, period } from '@/lib/events';
-import { report } from '@/lib/events-report';
+import { bookings, events, secretMatches, weekKey, dayKey } from '@/lib/rdv';
+import { bookingReport } from '@/lib/rdv-report';
 import { eventsReportSender, sendEventsReport } from '@/lib/email';
+
+const REPORT_SCOPE = 'global';
+// La synthèse hebdomadaire est globale ; après l'événement, supprimer le cron
+// et les variables EIZO_EVENTS_REPORT_* pour arrêter les envois.
 
 export async function GET(request: Request, {params}: {params: Promise<{cadence:string}>}) {
   const secret = process.env.CRON_SECRET;
@@ -13,28 +17,25 @@ export async function GET(request: Request, {params}: {params: Promise<{cadence:
   const cadence = z.enum(['jour','semaine']).safeParse((await params).cadence);
   const recipients = z.array(z.string().email()).min(1).max(30).safeParse(
     [...new Set((process.env.EIZO_EVENTS_REPORT_TO ?? '').split(',').map(value=>value.trim().toLowerCase()).filter(Boolean))]);
-  const source = slug.safeParse(process.env.EIZO_EVENTS_REPORT_EVENT);
   const origin = process.env.EIZO_EVENTS_REPORT_ORIGIN;
   const sender = eventsReportSender(process.env.EIZO_EVENTS_REPORT_FROM);
-  if (!cadence.success || !recipients.success || !source.success || !origin ||
-    !sender ||
+  if (!cadence.success || !recipients.success || !origin || !sender ||
     !process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASSWORD)
     return Response.json({error:'Rapports non configurés'},{status:503});
   try {
-    const link = new URL('/events?event='+source.data,origin);
+    const link = new URL('/events?vue=global',origin);
     if (link.protocol!=='https:') throw new Error();
     const now = new Date();
-    if (cadence.data==='semaine' && period(now,false)!==period(now,true)) return Response.json({skipped:true});
-    const db = getSupabaseClient();
-    const {data:event,error} = await db.from('eizo_events').select('slug,title,starts_on').eq('slug',source.data).single();
-    if (error) throw error;
-    const message = report(event,await participants(source.data),cadence.data,now,link);
-    const key = {event_slug:source.data,cadence:cadence.data,period_start:message.key};
-    const claim = await db.from('eizo_event_reports').insert(key);
+    // La synthèse hebdomadaire part le lundi : les autres jours on ignore.
+    if (cadence.data==='semaine' && dayKey(now) !== weekKey(now)) return Response.json({skipped:true});
+    const [list, rows] = await Promise.all([events(), bookings()]);
+    const message = bookingReport(rows,list,cadence.data,now,link);
+    const key = {scope:REPORT_SCOPE,cadence:cadence.data,period_start:message.key};
+    const claim = await getSupabaseClient().from('eizo_event_reports').insert(key);
     if (claim.error?.code==='23505') return Response.json({skipped:true});
     if (claim.error) throw claim.error;
     await sendEventsReport(recipients.data,message,sender);
-    const updated = await db.from('eizo_event_reports').update({sent_at:new Date().toISOString()}).match(key);
+    const updated = await getSupabaseClient().from('eizo_event_reports').update({sent_at:new Date().toISOString()}).match(key);
     if (updated.error) throw updated.error;
     return Response.json({sent:true});
   } catch {

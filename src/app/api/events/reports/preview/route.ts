@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { eventsReportSender, sendEventsReport } from '@/lib/email';
-import { secretMatches } from '@/lib/events';
+import { secretMatches } from '@/lib/rdv';
 import { demoReport } from '@/lib/events-report-demo';
 
 export async function POST(request: Request) {

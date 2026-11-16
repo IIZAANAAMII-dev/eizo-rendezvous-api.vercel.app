@@ -58,8 +58,11 @@ export async function GET(request: Request, {params}: {params: Promise<{cadence:
     }
 
     const [everyEvent, allRows] = await Promise.all([events(), bookings()]);
-    // Événements encore suivis : datés, et terminés depuis moins de 2 jours.
+    // Seuls les événements de la synthèse (par défaut : les Rencontres EIZO), datés et
+    // terminés depuis moins de `days` jours.
+    const reported = new Set((process.env.EIZO_EVENTS_REPORT_EVENTS || 'rencontre-2026').split(',').map(slug=>slug.trim()));
     const allEvents = everyEvent.filter(event=>{
+      if (!reported.has(event.slug)) return false;
       const last = event.event_end_date ?? event.event_start_date;
       if (!last) return false;
       const stop = new Date(last+'T12:00:00Z'); stop.setUTCDate(stop.getUTCDate()+days);

@@ -21,4 +21,12 @@ Exporter les soumissions depuis Globo. Le compte Globo doit avoir accès à l’
 python scripts/normalize-eizo-events.py export.csv import.json --id "ID" --timestamp "Date" --name "Nom" --email "E-mail" --company "Entreprise" --sector "Secteur"
 ```
 
-Sélectionner l’événement puis choisir **Importer l’historique**. Les lots sont limités à 1 000 lignes et 750 Ko. Garder ces fichiers dans un emplacement privé. Les synthèses quotidiennes et hebdomadaires sont exportables en CSV, avec des semaines démarrant le lundi et des dates calculées dans le fuseau Europe/Paris. Un envoi automatique nécessite un planificateur et des destinataires configurés séparément.
+Sélectionner l’événement puis choisir **Importer l’historique**. Les lots sont limités à 1 000 lignes et 750 Ko. Garder ces fichiers dans un emplacement privé. Les synthèses sont aussi exportables en CSV.
+
+## E-mails de synthèse
+
+Le rendu fictif est disponible à `/events/demo/synthese`. Pour activer les e-mails, appliquer la migration `202611160002_eizo_event_reports.sql`, renseigner les destinataires dans `EIZO_EVENTS_REPORT_TO` (adresses séparées par des virgules), l’événement dans `EIZO_EVENTS_REPORT_EVENT`, le domaine HTTPS du tableau de bord dans `EIZO_EVENTS_REPORT_ORIGIN`, et générer un `CRON_SECRET` d’au moins 32 caractères. L’envoi réutilise le transport SMTP de l’application, avec le nom d’expéditeur EIZO Events et un envoi individuel.
+
+Programmer des GET authentifiés par `Authorization: Bearer <CRON_SECRET>` sur `/api/events/reports/jour` chaque matin et `/api/events/reports/semaine` le lundi matin, dans le fuseau Europe/Paris. Les rapports portent sur la veille ou la semaine complète précédente. Ils contiennent uniquement des chiffres agrégés et un lien vers le tableau de bord privé.
+
+Une période est réservée en base avant l’envoi pour éviter deux envois simultanés. Si l’envoi échoue après réservation, vérifier la remise auprès du fournisseur SMTP et l’état `sent_at` avant toute relance manuelle. Planifier les déclenchements après la validation du premier envoi avec une adresse de test.

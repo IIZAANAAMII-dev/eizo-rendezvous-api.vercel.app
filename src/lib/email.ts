@@ -598,6 +598,13 @@ interface SendEmailPayload {
   senderName?: string;
 }
 
+export async function sendEventsReport(recipients: string[], message: { subject: string; html: string }) {
+  const from = process.env.SMTP_USER;
+  if (!from) throw new Error('SMTP non configuré');
+  for (const to of recipients)
+    await sendWithSmtp({ to, from, subject: message.subject, html: message.html, senderName:'EIZO Events' });
+}
+
 async function sendEmail(payload: SendEmailPayload): Promise<void> {
   if (process.env.SMTP_HOST && process.env.SMTP_USER) {
     return sendWithSmtp(payload);

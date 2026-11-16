@@ -33,9 +33,12 @@ export function Dashboard({event,events,rows,query,admin,demo}:{
         {item.title}{item.registrations !== undefined && <small>{item.registrations} inscriptions</small>}
       </a>)}</aside>
     <div className={styles.content}>
-      {demo && <p className={styles.demo}>Démonstration · données fictives</p>}
-      <h1>{event.title}</h1>
-      {event.starts_on && <p><time dateTime={event.starts_on}>{event.starts_on.split('-').reverse().join('/')}</time></p>}
+      <div className={styles.hero}>
+        {demo && <p className={styles.demo}>Démonstration · données fictives</p>}
+        <h1>{event.title}</h1>
+        {event.starts_on && <p><time dateTime={event.starts_on}>{event.starts_on.split('-').reverse().join('/')}</time></p>}
+        {demo && <a href="/events/demo/synthese">Voir l’e-mail de synthèse</a>}
+      </div>
       <div className={styles.metrics}>{[
         ['Inscriptions',rows.length],
         ['Aujourd’hui',rows.filter(r=>period(new Date(r.registered_at),false)===today).length],

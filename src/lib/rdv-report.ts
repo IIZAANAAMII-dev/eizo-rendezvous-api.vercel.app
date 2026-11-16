@@ -1,77 +1,88 @@
-import { type Booking, type Event, dayKey, weekKey } from './rdv';
+import { type Booking, type Event, dayKey, isCounted, slotText } from './rdv';
 
 function escape(value: string) {
   return value.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
 }
+function shiftDay(day: string, delta: number) {
+  const date = new Date(day+'T12:00:00Z');
+  date.setUTCDate(date.getUTCDate()+delta);
+  return date.toISOString().slice(0,10);
+}
+const frDay = (day: string) => day.split('-').reverse().join('/');
 
-const statusLabels: Record<string,string> = {
-  pending:'En attente', confirmed:'Confirmé', refused:'Refusé',
-  cancelled:'Annulé', completed:'Terminé', no_show:'No-show',
-};
-const activeStatuses = new Set(['pending','confirmed']);
-
-export function bookingReport(rows: Booking[], events: Event[], mode: 'jour'|'semaine', now: Date, link: URL) {
-  const currentWeek = weekKey(now);
-  const currentDay = dayKey(now);
-  const end = mode === 'semaine' ? currentWeek : currentDay;
-  const startDate = new Date(end+'T12:00:00Z');
-  startDate.setUTCDate(startDate.getUTCDate()-(mode==='semaine'?7:1));
-  const start = startDate.toISOString().slice(0,10);
-  const last = new Date(end+'T12:00:00Z'); last.setUTCDate(last.getUTCDate()-1);
-  const previousStart = new Date(start+'T12:00:00Z');
-  previousStart.setUTCDate(previousStart.getUTCDate()-(mode==='semaine'?7:1));
-  const previousKey = previousStart.toISOString().slice(0,10);
-  const inPeriod = (row:Booking, from:string, to:string) => {
-    const key = mode==='semaine' ? weekKey(row.created_at) : dayKey(row.created_at);
-    // Pour la comparaison, on compare les buckets hebdo/jour
-    return key >= from && key < to;
-  };
-  const subset = rows.filter(row=>inPeriod(row,start,end));
-  const previous = rows.filter(row=>inPeriod(row,previousKey,start));
+/**
+ * Synthèse des `days` derniers jours complets (heure de Paris), terminée la veille de `now`.
+ * Contient le résumé chiffré et la fiche détaillée de chaque nouvelle demande.
+ */
+export function bookingReport(rows: Booking[], events: Event[], days: number, now: Date, link: URL) {
+  const end = dayKey(now);                 // exclu
+  const start = shiftDay(end, -days);      // inclus
+  const previousStart = shiftDay(start, -days);
+  const counted = rows.filter(isCounted);
+  const inRange = (row: Booking, from: string, to: string) => { const key = dayKey(row.created_at); return key >= from && key < to; };
+  const subset = counted.filter(row => inRange(row, start, end)).sort((a,b)=>b.created_at.localeCompare(a.created_at));
+  const previous = counted.filter(row => inRange(row, previousStart, start));
   const diff = subset.length - previous.length;
-  const delta = diff===0 ? 'Stable par rapport à la période précédente' :
-    (diff>0?'+':'−')+Math.abs(diff)+' par rapport à la période précédente';
-  const confirmed = subset.filter(row=>row.status==='confirmed').length;
-  const pending = subset.filter(row=>row.status==='pending').length;
-  const refused = subset.filter(row=>['refused','cancelled','no_show'].includes(row.status)).length;
-  const totalActive = rows.filter(row=>activeStatuses.has(row.status)).length;
-  const byEvent = new Map<string,number>();
-  for (const row of subset) byEvent.set(row.organizer_id,(byEvent.get(row.organizer_id)??0)+1);
-  const eventName = new Map(events.map(event=>[event.id,event.name]));
-  const eventRows = [...byEvent.entries()].sort((a,b)=>b[1]-a[1]);
-  const format = (value:string) => value.split('-').reverse().join('/');
-  const dates = mode==='jour' ? 'le '+format(start) : 'du '+format(start)+' au '+format(last.toISOString().slice(0,10));
-  const subject = 'EIZO Events · '+(mode==='jour'?'Synthèse quotidienne':'Synthèse hebdomadaire des rendez-vous')+' · '+dates;
-  const counts: [string,number][] = [
-    ['Confirmés',confirmed],['En attente',pending],['Refusés / annulés',refused],
-  ];
-  const eventSlug = new Map(events.map(event=>[event.id,event.slug]));
-  const totalByEvent = new Map<string,number>();
-  for (const row of rows) if (activeStatuses.has(row.status)) totalByEvent.set(row.organizer_id,(totalByEvent.get(row.organizer_id)??0)+1);
-  const url = (params: Record<string,string>) => {
-    const target = new URL(link.href);
-    for (const [key,value] of Object.entries(params)) target.searchParams.set(key,value);
+  const label = days === 1 ? 'la veille' : `les ${days} jours précédents`;
+  const delta = diff === 0 ? `Autant que ${label}` : `${diff > 0 ? '+' : '−'}${Math.abs(diff)} par rapport ${days === 1 ? 'à' : 'aux'} ${label.replace(/^les /,'')}`;
+  const eventName = new Map(events.map(event => [event.id, event.name]));
+  const eventSlug = new Map(events.map(event => [event.id, event.slug]));
+  const total = new Map<string, number>();
+  const recent = new Map<string, number>();
+  for (const row of counted) total.set(row.organizer_id, (total.get(row.organizer_id) ?? 0) + 1);
+  for (const row of subset) recent.set(row.organizer_id, (recent.get(row.organizer_id) ?? 0) + 1);
+  const lastDay = shiftDay(end, -1);
+  const dates = days === 1 ? 'le ' + frDay(start) : 'du ' + frDay(start) + ' au ' + frDay(lastDay);
+  const title = days === 1 ? 'Synthèse quotidienne' : days === 7 ? 'Synthèse hebdomadaire' : `Synthèse des ${days} derniers jours`;
+  const subject = `EIZO Events · ${title} · ${dates} · ${subset.length} nouvelle${subset.length > 1 ? 's' : ''} demande${subset.length > 1 ? 's' : ''}`;
+
+  const url = (params: Record<string,string>, path = '/events') => {
+    const target = new URL(path, link);
+    for (const [key, value] of Object.entries(params)) target.searchParams.set(key, value);
     return escape(target.href);
   };
-  const overview = url({vue:'global'});
-  const weekly = url({vue:'global',semaine:start});
-  const exportLink = (() => { const target = new URL('/events/export',link); target.searchParams.set('format','xlsx'); return escape(target.href); })();
-  const stamp = new Intl.DateTimeFormat('fr-FR',{timeZone:'Europe/Paris',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-  const shown = subset.slice(0,25);
-  const cell = 'padding:8px 6px;border-top:1px solid #e6e8ef;font-size:13px;vertical-align:top';
-  const newRows = shown.map(row=>`<tr><td style="${cell}"><strong>${escape(row.customer_name)}</strong>${row.customer_need?`<br><span style="color:#514982">${escape(row.customer_need)}</span>`:''}</td><td style="${cell}">${escape(eventName.get(row.organizer_id) ?? '')}${row.customer_usage?`<br><span style="color:#514982">${escape(row.customer_usage)}</span>`:''}</td><td style="${cell};white-space:nowrap">${stamp.format(new Date(row.created_at))}<br>${escape(statusLabels[row.status] ?? row.status)}</td></tr>`).join('');
-  const html = `<!doctype html><html lang="fr"><meta charset="utf-8"><body style="margin:0;background:#eef0f6;font-family:Arial,sans-serif;color:#182139"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#eef0f6"><tr><td align="center" style="padding:24px 12px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;background:white">
-<tr><td style="background:#151934;color:white;padding:30px"><p style="color:#ffb3bd;font-size:13px;letter-spacing:.08em;margin:0">EIZO / EVENTS</p><h1 style="font-size:28px;line-height:1.1;margin:12px 0">Synthèse des rendez-vous et inscriptions</h1><p style="margin:0;color:#c9c8ff">${dates}</p></td></tr>
-<tr><td style="padding:28px 30px">
-<h2 style="margin:0 0 10px;font-size:16px">Résumé</h2>
-<p style="margin:0;color:#c40025;font-size:56px;font-weight:bold;letter-spacing:-3px">${subset.length}</p><p style="margin:4px 0 6px;font-size:17px;font-weight:bold">Nouvelles demandes sur la période</p><p style="margin:0 0 6px;color:#514982;font-size:14px">${delta}</p><p style="margin:0 0 20px;color:#514982;font-size:13px">${totalActive} demande(s) active(s) au total, tous événements confondus</p>
-<table width="100%" cellpadding="10" cellspacing="0" style="background:#f8f9fb">${counts.map(([name,count])=>`<tr><th align="left" scope="row" style="font-weight:normal">${name} (période)</th><td align="right" style="font-weight:bold">${count}</td></tr>`).join('')}</table>
-${eventRows.length || totalByEvent.size ? `<h3 style="margin:24px 0 8px;font-size:14px">Par événement</h3><table width="100%" cellpadding="8" cellspacing="0"><tr><th align="left" style="font-size:12px;color:#555975">Événement</th><th align="right" style="font-size:12px;color:#555975">Cette période</th><th align="right" style="font-size:12px;color:#555975">Total actifs</th></tr>${[...new Set([...eventRows.map(([id])=>id),...totalByEvent.keys()])].map(id=>`<tr><td style="border-top:1px solid #e6e8ef"><a href="${url({event:eventSlug.get(id) ?? ''})}" style="color:#182139">${escape(eventName.get(id) ?? id)}</a></td><td align="right" style="border-top:1px solid #e6e8ef;font-weight:bold">${byEvent.get(id) ?? 0}</td><td align="right" style="border-top:1px solid #e6e8ef">${totalByEvent.get(id) ?? 0}</td></tr>`).join('')}</table>` : ''}
-${shown.length ? `<h3 style="margin:24px 0 8px;font-size:14px">Nouvelles demandes${subset.length>shown.length?` (25 premières sur ${subset.length})`:''}</h3><table width="100%" cellspacing="0" cellpadding="0">${newRows}</table>` : ''}
-<h3 style="margin:28px 0 10px;font-size:14px">Back-office</h3>
-<p style="margin:0 0 10px"><a href="${overview}" style="display:inline-block;padding:13px 19px;background:#c40025;color:white;font-weight:bold;text-decoration:none;border-radius:6px">Statistiques et tableau de bord</a></p>
-<p style="margin:0;font-size:13px;line-height:1.8"><a href="${weekly}" style="color:#c40025">Synthèse détaillée de la semaine</a> · <a href="${exportLink}" style="color:#c40025">Export Excel</a></p>
+  const stamp = new Intl.DateTimeFormat('fr-FR',{timeZone:'Europe/Paris',weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+  const line = (name: string, value: string | null | undefined) => value
+    ? `<tr><td style="padding:3px 12px 3px 0;color:#567895;font-size:12px;white-space:nowrap;vertical-align:top">${name}</td><td style="padding:3px 0;font-size:13px;color:#072446">${value}</td></tr>` : '';
+  const card = (row: Booking) => `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 12px;border:1px solid #d3e3ef;border-radius:10px"><tr><td style="padding:16px 18px">
+<p style="margin:0 0 2px;font:800 16px/1.3 Arial,sans-serif;color:#071c35;letter-spacing:-.3px">${escape(row.customer_name)}</p>
+<p style="margin:0 0 10px;font-size:12px;color:#0877e6;font-weight:bold">${escape(eventName.get(row.organizer_id) ?? '')} · reçue ${escape(stamp.format(new Date(row.created_at)))}</p>
+<table role="presentation" cellpadding="0" cellspacing="0">
+${line('Entreprise', row.company ? escape(row.company) : null)}
+${line('Fonction', row.job_title ? escape(row.job_title) : null)}
+${line('E-mail', `<a href="mailto:${escape(row.customer_email)}" style="color:#0877e6">${escape(row.customer_email)}</a>`)}
+${line('Téléphone', row.customer_phone ? `<a href="tel:${escape(row.customer_phone)}" style="color:#0877e6">${escape(row.customer_phone)}</a>` : null)}
+${line('Créneau', escape(slotText(row)))}
+${line('Produit', row.requested_product?.title || row.product_title ? escape(row.requested_product?.title || row.product_title || '') : null)}
+${line('Besoin', row.customer_need ? escape(row.customer_need) : null)}
+${line('Usage', row.customer_usage ? escape(row.customer_usage) : null)}
+${line('Message', row.customer_notes ? `<em>« ${escape(row.customer_notes)} »</em>` : null)}
+</table></td></tr></table>`;
+
+  const ids = [...new Set([...recent.keys(), ...total.keys()])];
+  const html = `<!doctype html><html lang="fr"><meta charset="utf-8"><body style="margin:0;background:#f4faff;font-family:Arial,sans-serif;color:#072446"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4faff"><tr><td align="center" style="padding:24px 12px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;background:#ffffff;border:1px solid #d3e3ef;border-radius:14px;overflow:hidden">
+<tr><td style="background:#052c5d;background-image:linear-gradient(150deg,#052c5d,#003a74);color:white;padding:30px 30px 28px">
+<p style="margin:0;color:#7fc0ff;font:bold 10px/1.5 Arial,sans-serif;letter-spacing:3px">EIZO FRANCE / EVENTS</p>
+<h1 style="margin:12px 0 6px;font:800 30px/1.1 Arial,sans-serif;letter-spacing:-1.2px">${title}<span style="color:#7fc0ff">.</span></h1>
+<p style="margin:0;color:#b6d3ef;font-size:14px">${dates}</p></td></tr>
+<tr><td style="padding:28px 30px 8px">
+<p style="margin:0;color:#0877e6;font:bold 10px/1.5 Arial,sans-serif;letter-spacing:3px">RÉSUMÉ</p>
+<p style="margin:6px 0 0;font:800 64px/1 Arial,sans-serif;letter-spacing:-3px;color:#071c35">${subset.length}</p>
+<p style="margin:6px 0 4px;font-size:16px;font-weight:bold">nouvelle${subset.length>1?'s':''} demande${subset.length>1?'s':''}</p>
+<p style="margin:0 0 18px;color:#567895;font-size:13px">${delta}</p>
+<table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #d3e3ef">
+<tr><td style="padding:10px 0;font-size:11px;color:#567895;font-weight:bold;letter-spacing:1px">ÉVÉNEMENT</td><td align="right" style="padding:10px 0;font-size:11px;color:#567895;font-weight:bold;letter-spacing:1px">PÉRIODE</td><td align="right" style="padding:10px 0;font-size:11px;color:#567895;font-weight:bold;letter-spacing:1px">TOTAL</td></tr>
+${ids.map(id=>`<tr><td style="padding:10px 0;border-top:1px solid #d3e3ef"><a href="${url({event:eventSlug.get(id) ?? ''})}" style="color:#071c35;font-weight:bold;text-decoration:none">${escape(eventName.get(id) ?? id)}</a></td><td align="right" style="padding:10px 0;border-top:1px solid #d3e3ef;font-weight:bold;color:#0877e6">${recent.get(id) ?? 0}</td><td align="right" style="padding:10px 0;border-top:1px solid #d3e3ef">${total.get(id) ?? 0}</td></tr>`).join('')}
+</table></td></tr>
+<tr><td style="padding:22px 30px 6px">
+<p style="margin:0 0 12px;color:#0877e6;font:bold 10px/1.5 Arial,sans-serif;letter-spacing:3px">LES NOUVELLES DEMANDES EN DÉTAIL</p>
+${subset.length ? subset.slice(0,40).map(card).join('') : '<p style="margin:0 0 12px;color:#567895">Aucune nouvelle demande sur la période.</p>'}
+${subset.length > 40 ? `<p style="color:#567895;font-size:13px">… et ${subset.length-40} autres dans le back-office.</p>` : ''}
 </td></tr>
-<tr><td style="padding:14px 30px;background:#f4f4ff;color:#555975;font-size:12px">EIZO France · Synthèse interne, ne pas transférer · Europe/Paris</td></tr></table></td></tr></table></body></html>`;
-  return {key:start, subject, count:subset.length, html};
+<tr><td style="padding:10px 30px 30px">
+<a href="${url({vue:'global'})}" style="display:inline-block;padding:14px 22px;background:#0877e6;color:white;font:bold 13px Arial,sans-serif;text-decoration:none;border-radius:999px">Ouvrir le back-office ↗</a>
+<p style="margin:14px 0 0;font-size:13px"><a href="${url({format:'xlsx'},'/events/export')}" style="color:#0877e6">Télécharger l'export Excel</a></p>
+</td></tr>
+<tr><td style="padding:14px 30px;background:#f4faff;border-top:1px solid #d3e3ef;color:#567895;font-size:11px">EIZO France · Synthèse interne, ne pas transférer · heure de Paris</td></tr></table></td></tr></table></body></html>`;
+  return { key: start, subject, count: subset.length, html };
 }

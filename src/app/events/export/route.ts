@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import * as XLSX from 'xlsx';
 import { eventAccess, scopeTo } from '@/lib/events-access';
-import { bookings, csvCell, events, inWeek, slug, totals, weekKey, type Booking } from '@/lib/rdv';
+import { bookings, csvCell, events, inWeek, isCounted, slotText, slug, totals, weekKey, type Booking } from '@/lib/rdv';
 
 const headers = {'Cache-Control':'private, no-store'};
 
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   const scope = slug.safeParse(query.get('event'));
   if (query.get('event') && !scope.success) return new Response('Événement invalide',{status:400,headers});
   const [allEvents, allRows] = await Promise.all([events(), bookings()]);
-  const {events:list, rows} = scopeTo(access, allEvents, allRows);
+  const {events:list, rows} = scopeTo(access, allEvents, allRows.filter(isCounted));
   const scoped = scope.success ? rows.filter(row=>{
     const event = list.find(item=>item.slug===scope.data);
     return event && row.organizer_id===event.id;
@@ -23,17 +23,18 @@ export async function GET(request: Request) {
   const periodRows = semaine ? scoped.filter(row=>inWeek(row,semaine)) : scoped;
   const name = 'eizo-rdv'+(scope.success ? '-'+scope.data : '')+(semaine ? '-'+semaine : '');
 
+  const stamp = new Intl.DateTimeFormat('fr-FR',{timeZone:'Europe/Paris',dateStyle:'short',timeStyle:'short'});
   const bookingLine = (row:Booking) => [
-    row.created_at,row.date,row.start_time,row.end_time,row.customer_name,row.customer_email,
-    row.customer_phone ?? '',row.customer_need ?? '',row.customer_usage ?? '',
-    row.requested_product?.title ?? row.product_title ?? '',row.status,eventName.get(row.organizer_id) ?? '',row.customer_notes ?? '',
+    stamp.format(new Date(row.created_at)),eventName.get(row.organizer_id) ?? '',row.customer_name,row.company ?? '',row.job_title ?? '',
+    row.customer_email,row.customer_phone ?? '',slotText(row),row.requested_product?.title ?? row.product_title ?? '',
+    row.customer_need ?? '',row.customer_usage ?? '',row.customer_notes ?? '',
   ];
-  const bookingHeader = ['Demande le','Date RDV','Début','Fin','Nom','Email','Téléphone','Besoin','Usage','Produit','Statut','Événement','Message'];
+  const bookingHeader = ['Reçue le','Événement','Nom','Entreprise','Fonction','E-mail','Téléphone','Créneau','Produit','Besoin','Usage','Message'];
 
   if (query.get('format') === 'xlsx') {
     const book = XLSX.utils.book_new();
     const sheet = XLSX.utils.aoa_to_sheet([bookingHeader,...periodRows.map(bookingLine)]);
-    sheet['!cols'] = [{wch:20},{wch:11},{wch:6},{wch:6},{wch:24},{wch:32},{wch:14},{wch:30},{wch:18},{wch:30},{wch:12},{wch:24},{wch:40}];
+    sheet['!cols'] = [{wch:16},{wch:24},{wch:24},{wch:26},{wch:22},{wch:32},{wch:14},{wch:26},{wch:28},{wch:30},{wch:18},{wch:50}];
     XLSX.utils.book_append_sheet(book,sheet,'Rendez-vous');
     const weeks = new Map<string,number>();
     for (const row of scoped) {

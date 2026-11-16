@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title:'Mot de passe · EIZO Events', robots:{index:false,follow:false}, referrer:'no-referrer' as const };
 
 const errors: Record<string,string> = {
-  lien: 'Ce lien n’est plus valable (30 minutes, une seule utilisation). Demandez-en un nouveau.',
+  lien: 'Ce lien n’est plus valable (expiré ou déjà utilisé). Demandez-en un nouveau ci-dessous.',
   mdp: 'Le mot de passe doit faire au moins 10 caractères et les deux saisies doivent être identiques.',
   compte: 'Le compte n’a pas pu être mis à jour. Réessayez ou contactez klegarrec@feeder.fr.',
 };

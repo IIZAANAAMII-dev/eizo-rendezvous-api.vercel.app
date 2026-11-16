@@ -1,7 +1,7 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 
 /**
- * Lien signé « choisir mon mot de passe », valable 30 minutes et à usage unique
+ * Lien signé « choisir mon mot de passe », à usage unique, valable 30 minutes (7 jours pour une invitation)
  * (le jti est enregistré dans eizo_event_password_links au moment de l'utilisation).
  */
 const TTL = 30 * 60 * 1000;
@@ -13,8 +13,8 @@ function secret() {
 }
 const sign = (payload: string) => createHmac('sha256', secret()).update('eizo-password:' + payload).digest('base64url');
 
-export function createPasswordToken(email: string) {
-  const payload = Buffer.from(JSON.stringify({ e: email.toLowerCase(), x: Date.now() + TTL, j: randomUUID() })).toString('base64url');
+export function createPasswordToken(email: string, ttl = TTL) {
+  const payload = Buffer.from(JSON.stringify({ e: email.toLowerCase(), x: Date.now() + ttl, j: randomUUID() })).toString('base64url');
   return payload + '.' + sign(payload);
 }
 

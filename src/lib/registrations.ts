@@ -23,13 +23,14 @@ export const registrationInput = z.object({
   company: z.string().trim().max(200).default(''),
   job_title: z.string().trim().max(200).default(''),
   slot: z.string().trim().max(120).default(''),
+  phone: z.string().trim().max(40).default(''),
   message: z.string().trim().max(4000).default(''),
   consent: z.coerce.boolean().default(false),
 });
 export type RegistrationInput = z.infer<typeof registrationInput>;
 
 type Registration = RegistrationInput & {
-  id: string; event_slug: string; status: Booking['status']; created_at: string;
+  id: string; event_slug: string; status: Booking['status']; created_at: string; source?: string;
 };
 
 /** "10h30 - 11h00", "10:30–11:00", "10h" → heures de début/fin si présentes. */
@@ -48,11 +49,12 @@ export function registrationToBooking(row: Registration): Booking | null {
   return {
     id: row.id, organizer_id: event.id, date: event.day,
     start_time: start ?? event.defaultStart, end_time: end ?? (start ? start : event.defaultEnd),
-    customer_name: name, customer_email: row.email, customer_phone: null,
+    customer_name: name, customer_email: row.email, customer_phone: row.phone || null,
     customer_notes: row.message || null, customer_need: null, customer_usage: null,
     requested_product: null, product_title: null,
     company: row.company || null, job_title: row.job_title || null, slot_label: row.slot || null,
-    status: row.status, created_at: row.created_at, source: 'registration',
+    status: row.status, created_at: row.created_at, source: 'registration', origin: row.source,
+    first_name: row.first_name, last_name: row.last_name,
   };
 }
 
@@ -60,7 +62,7 @@ export async function registrationBookings(): Promise<Booking[]> {
   const rows: Booking[] = [];
   for (let start = 0; ; start += 1000) {
     const { data, error } = await getSupabaseClient().from('eizo_event_registrations')
-      .select('id,event_slug,email,first_name,last_name,company,job_title,slot,message,consent,status,created_at')
+      .select('id,event_slug,email,first_name,last_name,company,job_title,slot,phone,message,consent,status,created_at,source')
       .order('created_at', { ascending: false }).order('id').range(start, start + 999);
     if (error) {
       // Table absente (migration non appliquée) : on n'empêche pas l'affichage des RDV.
@@ -77,8 +79,10 @@ export async function registrationBookings(): Promise<Booking[]> {
 
 /** Enregistre (ou met à jour) une inscription ; une seule par e-mail et par événement. */
 export async function saveRegistration(eventSlug: string, input: RegistrationInput, source = 'globo') {
+  // Les champs vides n'écrasent pas ce qui existe déjà (fiche complétée par un admin).
+  const filled = Object.fromEntries(Object.entries(input).filter(([, value]) => value !== '' && value !== undefined));
   const { error } = await getSupabaseClient().from('eizo_event_registrations').upsert(
-    { event_slug: eventSlug, ...input, source, updated_at: new Date().toISOString() },
+    { event_slug: eventSlug, ...filled, source, updated_at: new Date().toISOString() },
     { onConflict: 'event_slug,email' },
   );
   if (error) throw error;

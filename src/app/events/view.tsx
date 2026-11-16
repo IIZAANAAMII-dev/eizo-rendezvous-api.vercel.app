@@ -1,6 +1,8 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { type Booking, type Event, dayKey, initials, inWeek, isCounted, slotText, totals, weekKey } from '@/lib/rdv';
-import { login } from './actions';
+import { changeReportMode, invite, login, saveRegistration, sendPreview } from './actions';
+import type { Member } from '@/lib/team';
+import { formEvents } from '@/lib/registrations';
 import { Motion } from './motion';
 import styles from './events.module.css';
 
@@ -49,6 +51,30 @@ function weekDays(week: string) {
 const delay = (index:number) => ({'--d':`${index*70}ms`} as CSSProperties);
 const product = (row:Booking) => row.requested_product?.title || row.product_title || null;
 const subtitle = (row:Booking) => [row.job_title, row.company].filter(Boolean).join(' · ') || row.customer_need || row.customer_email;
+
+export type AdminData = {
+  self: string; mailReady: boolean; nextSend: string | null;
+  mode: { production: boolean; wanted: 'dev' | 'production'; dev: string; updatedBy: string | null; updatedAt: string | null };
+  members: Member[]; history: { scope: string; cadence: string; period_start: string; sent_at: string | null }[];
+  followed: { name: string; stop: string | null }[];
+};
+
+const NOTICES: Record<string,[string,'ok'|'ko']> = {
+  'apercu-envoye': ['Aperçu de la synthèse envoyé dans votre boîte mail.','ok'],
+  'apercu-aucun': ['Aucun événement suivi : pas de synthèse à envoyer.','ko'],
+  'apercu-erreur': ['L’aperçu n’a pas pu être envoyé. Réessayez dans un instant.','ko'],
+  'mode-equipe': ['La synthèse partira désormais à toute l’équipe.','ok'],
+  'mode-test': ['La synthèse ne part plus qu’à vous (mode test).','ok'],
+  'mode-confirmer': ['Cochez la case de confirmation pour envoyer la synthèse à toute l’équipe.','ko'],
+  'invitation-envoyee': ['Invitation envoyée : la personne va recevoir un lien pour choisir son mot de passe.','ok'],
+  'invitation-erreur': ['L’invitation n’a pas pu être envoyée.','ko'],
+  'fiche-enregistree': ['Fiche mise à jour.','ok'],
+  'fiche-ajoutee': ['Inscription ajoutée.','ok'],
+  'fiche-doublon': ['Cette adresse e-mail est déjà inscrite à cet événement.','ko'],
+  'fiche-erreur': ['Enregistrement impossible : vérifiez les champs.','ko'],
+  'autorisation': ['Action réservée aux administrateurs.','ko'],
+};
+const frDate = (day: string) => new Intl.DateTimeFormat('fr-FR',{timeZone:'UTC',weekday:'long',day:'numeric',month:'long'}).format(new Date(day+'T12:00:00Z'));
 
 /** Titre découpé en mots pour l'apparition ligne à ligne. */
 export function Title({text,accent}:{text:string;accent?:string}) {
@@ -133,7 +159,7 @@ function WeeklyCard({rows,query,base,exportBase}:{rows:Booking[];query:Record<st
 }
 
 /** Fiche complète d'un rendez-vous : toutes les informations transmises. */
-function Detail({row,eventName}:{row:Booking;eventName?:string}) {
+function Detail({row,eventName,editable,eventSlug}:{row:Booking;eventName?:string;editable?:boolean;eventSlug?:string}) {
   const fields: [string,ReactNode][] = [
     ['Entreprise', row.company],
     ['Fonction', row.job_title],
@@ -155,11 +181,79 @@ function Detail({row,eventName}:{row:Booking;eventName?:string}) {
     <dl>{fields.filter(([,value])=>value).map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
     {row.customer_notes && <blockquote>« {row.customer_notes} »</blockquote>}
     {row.status==='cancelled' && <p className={styles.cancelled}>Annulé par le participant</p>}
+    {row.origin?.startsWith('globo-import') && <p className={styles.origin}>Importée depuis Globo · détails à compléter</p>}
+    {row.origin?.startsWith('manuel:') && <p className={styles.origin}>Ajoutée à la main par {row.origin.slice(7)}</p>}
+    {editable && row.source==='registration' && <details className={styles.edit}>
+      <summary>Compléter la fiche</summary>
+      <RegistrationFields action={saveRegistration} row={row} eventSlug={eventSlug} submit="Enregistrer la fiche" />
+    </details>}
   </article>;
 }
 
-export function Dashboard({event,events,rows:allRows,query}:{
-  event?:Event; events:Event[]; rows:Booking[]; query:Record<string,string|undefined>;
+function RegistrationFields({action,row,eventSlug,submit}:{action:(form:FormData)=>Promise<void>;row?:Booking;eventSlug?:string;submit:string}) {
+  return <form action={action} className={styles.ficheForm}>
+    {row && <input type="hidden" name="id" value={row.id}/>}
+    {eventSlug && <input type="hidden" name="event" value={eventSlug}/>}
+    <label>Prénom<input name="first_name" defaultValue={row?.first_name ?? ''} /></label>
+    <label>Nom<input name="last_name" defaultValue={row?.last_name ?? ''} /></label>
+    {!row && <label className={styles.wide}>E-mail<input name="email" type="email" required /></label>}
+    <label>Entreprise<input name="company" defaultValue={row?.company ?? ''} /></label>
+    <label>Fonction<input name="job_title" defaultValue={row?.job_title ?? ''} /></label>
+    <label>Téléphone<input name="phone" type="tel" defaultValue={row?.customer_phone ?? ''} /></label>
+    <label>Créneau<input name="slot" list="eizo-slots" defaultValue={row?.slot_label ?? ''} placeholder="Ex. : 10 h - 11 h" /></label>
+    <label className={styles.wide}>Message<textarea name="message" rows={2} defaultValue={row?.customer_notes ?? ''} /></label>
+    <button>{submit}</button>
+  </form>;
+}
+
+function AdminPanel({data,event}:{data:AdminData;event?:Event}) {
+  const {mode} = data;
+  const others = data.members.filter(member=>member.email!==data.self);
+  return <section className={styles.adminGrid} id="administration">
+    <article className={`${styles.card} ${styles.adminCard}`} data-reveal>
+      <header className={styles.cardHead}><span className={styles.kicker}>Administration</span><h2>Synthèse <em>e-mail</em></h2></header>
+      <p className={styles.modeLine}><span className={mode.production ? styles.modeLive : styles.modeTest}>{mode.production ? 'Envoi à l’équipe' : 'Mode test'}</span>
+        {mode.production ? 'Chaque destinataire reçoit la synthèse de ses événements.' : <>Seul <strong>{mode.dev}</strong> la reçoit.</>}</p>
+      <dl className={styles.facts}>
+        <div><dt>Rythme</dt><dd>Tous les 2 jours, vers 8 h</dd></div>
+        <div><dt>Prochain envoi</dt><dd>{data.nextSend ? frDate(data.nextSend) : 'Aucun (événement terminé)'}</dd></div>
+        {data.followed.map(item=><div key={item.name}><dt>Dernier envoi</dt><dd>{item.stop ? frDate(item.stop) : '—'} · {item.name}</dd></div>)}
+        <div><dt>Derniers envois</dt><dd>{data.history.length ? data.history.slice(0,3).map(item=>new Intl.DateTimeFormat('fr-FR',{timeZone:'Europe/Paris',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(item.sent_at!))+(item.scope==='global'?' (équipe)':' (test)')).join(' · ') : 'Aucun pour l’instant'}</dd></div>
+      </dl>
+      {!data.mailReady && <p className={styles.warn}>L’envoi d’e-mails n’est pas configuré (SMTP).</p>}
+      <form action={sendPreview} className={styles.inline}>
+        {event && <input type="hidden" name="event" value={event.slug}/>}
+        <label>Version de<select name="as" defaultValue={data.self}>
+          {data.members.map(member=><option key={member.email} value={member.email}>{member.email===data.self ? 'moi' : member.email}</option>)}</select></label>
+        <button className={styles.smallButton}>M’envoyer un aperçu maintenant</button>
+      </form>
+      <form action={changeReportMode} className={styles.modeForm}>
+        {event && <input type="hidden" name="event" value={event.slug}/>}
+        {mode.wanted==='production'
+          ? <><input type="hidden" name="mode" value="dev"/><button className={styles.ghostSmall}>Repasser en mode test (moi seul)</button></>
+          : <><input type="hidden" name="mode" value="production"/>
+            <label className={styles.check}><input type="checkbox" name="confirm" value="oui"/>Je confirme l’envoi aux {data.members.filter(m=>m.weeklyReport).length} destinataires</label>
+            <button className={styles.ghostSmall}>Envoyer la synthèse à l’équipe</button></>}
+      </form>
+      {mode.updatedBy && <p className={styles.small}>Dernier changement : {mode.updatedBy}</p>}
+    </article>
+    <article className={`${styles.card} ${styles.adminCard}`} data-reveal>
+      <header className={styles.cardHead}><span className={styles.kicker}>Équipe</span><h2>Accès <em>{data.members.length}</em></h2></header>
+      <ul className={styles.members}>{[...data.members].sort((a,b)=>Number(b.email===data.self)-Number(a.email===data.self)).map(member=><li key={member.email}>
+        <span className={styles.avatar}>{member.email.slice(0,2).toUpperCase()}</span>
+        <span className={styles.personMain}><strong>{member.email}</strong>
+          <small>{member.role==='admin'?'Admin · ':''}{member.events==='*' ? 'tous les événements' : member.events.join(', ')}{member.weeklyReport ? ' · reçoit la synthèse' : ''}</small></span>
+        <span className={member.lastSignIn ? styles.memberOn : styles.memberOff}>{member.lastSignIn ? 'Connecté le '+new Intl.DateTimeFormat('fr-FR',{timeZone:'Europe/Paris',day:'2-digit',month:'short'}).format(new Date(member.lastSignIn)) : member.account ? 'Compte créé' : 'Pas encore invité'}</span>
+        {member.email!==data.self && <form action={invite}>{event && <input type="hidden" name="event" value={event.slug}/>}<input type="hidden" name="email" value={member.email}/>
+          <button className={styles.ghostSmall}>{member.lastSignIn ? 'Renvoyer un lien' : 'Inviter'}</button></form>}
+      </li>)}</ul>
+      <p className={styles.small}>{others.filter(m=>!m.lastSignIn).length} personne(s) ne se sont pas encore connectées. Les droits (événements visibles, synthèse) se règlent dans la table <code>eizo_event_access</code>.</p>
+    </article>
+  </section>;
+}
+
+export function Dashboard({event,events,rows:allRows,query,admin}:{
+  event?:Event; events:Event[]; rows:Booking[]; query:Record<string,string|undefined>; admin?:AdminData;
 }) {
   const rows = allRows.filter(isCounted);
   const scoped = event ? rows.filter(row=>row.organizer_id===event.id) : rows;
@@ -190,9 +284,19 @@ export function Dashboard({event,events,rows:allRows,query}:{
   const titleText = event ? event.name.replace(/\s+\d{4}$/,'') : (single ? events[0].name.replace(/\s+\d{4}$/,'') : 'Rendez-vous');
   const titleAccent = event ? (event.name.match(/\d{4}$/)?.[0] ?? event.specialty ?? undefined) : (single ? events[0].name.match(/\d{4}$/)?.[0] : 'tous événements');
 
+  const today = dayKey(new Date());
+  const countdown = event?.event_start_date ? Math.round((Date.parse(event.event_start_date+'T12:00:00Z')-Date.parse(today+'T12:00:00Z'))/86_400_000) : null;
+  const ended = (item:Event) => !!(item.event_end_date ?? item.event_start_date) && (item.event_end_date ?? item.event_start_date)! < today;
+  const ordered = [...events].sort((a,b)=>Number(ended(a))-Number(ended(b)) || (a.event_start_date ?? '9').localeCompare(b.event_start_date ?? '9'));
+  const notice = query.notice ? NOTICES[query.notice] : undefined;
+  const isFormEvent = event ? formEvents.some(item=>item.slug===event.slug) : false;
+  const slotOptions = [...new Set(scoped.map(row=>row.slot_label).filter(Boolean))] as string[];
+
   return <div className={styles.page}>
+    {notice && <p role="status" className={notice[1]==='ok' ? styles.toastOk : styles.toastKo}>{notice[0]}</p>}
     <section className={styles.hero}>
-      <p className={styles.kicker} data-reveal>Tableau de bord · {longDate.format(new Date())}</p>
+      <p className={styles.kicker} data-reveal>Tableau de bord · {longDate.format(new Date())}
+        {countdown!==null && <span className={styles.countdown}>{countdown>0 ? 'J-'+countdown : countdown===0 ? 'Aujourd’hui' : 'Terminé'}</span>}</p>
       <Title text={titleText} accent={titleAccent} />
       <div className={styles.heroMeta} data-reveal>
         {event?.event_start_date ? <p>
@@ -208,10 +312,10 @@ export function Dashboard({event,events,rows:allRows,query}:{
 
     {events.length > 1 && <nav className={styles.tabs} aria-label="Événements" data-reveal>
       <a aria-current={!event?'page':undefined} href="/events?vue=global">Vue d’ensemble<b>{rows.length}</b></a>
-      {events.map(item=>{
+      {ordered.map(item=>{
         const count = rows.filter(row=>row.organizer_id===item.id).length;
-        return <a aria-current={event?.id===item.id?'page':undefined} key={item.id} href={'/events?event='+item.slug}>
-          {item.name}{item.venue_name && <small>{item.venue_name}</small>}<b>{count}</b></a>;})}
+        return <a aria-current={event?.id===item.id?'page':undefined} key={item.id} href={'/events?event='+item.slug} className={ended(item) ? styles.pastTab : undefined}>
+          {item.name}<small>{ended(item) ? 'Terminé' : item.venue_name}</small><b>{count}</b></a>;})}
     </nav>}
 
     <section className={styles.metrics}>
@@ -258,13 +362,19 @@ export function Dashboard({event,events,rows:allRows,query}:{
         <label>au<input type="date" name="to" defaultValue={query.to}/></label>
         <button data-magnet>Filtrer</button>
       </form>
+      {admin && isFormEvent && <details className={styles.addFiche}>
+        <summary>+ Ajouter une inscription (téléphone, salon…)</summary>
+        <RegistrationFields action={saveRegistration} eventSlug={event!.slug} submit="Ajouter l’inscription" />
+      </details>}
+      <datalist id="eizo-slots">{['Sans préférence','09 h - 10 h','10 h - 11 h','11 h - 12 h','12 h - 13 h','13 h - 14 h',...slotOptions].filter((v,i,a)=>a.indexOf(v)===i).map(slot=><option key={slot} value={slot}/>)}</datalist>
       <div className={styles.details}>{matches.slice((page-1)*perPage,page*perPage).map(row=>
-        <Detail key={row.id} row={row} eventName={event ? undefined : eventName.get(row.organizer_id)} />)}</div>
+        <Detail key={row.id} row={row} eventName={event ? undefined : eventName.get(row.organizer_id)} editable={!!admin} eventSlug={event?.slug} />)}</div>
       {!matches.length && <p className={styles.empty}>Aucun rendez-vous pour cette sélection.</p>}
       {pages>1 && <div className={styles.pager}>{page>1 ? <a href={base+'&'+pager+'&page='+(page-1)+'#rendez-vous'}>← Précédent</a> : <span/>}
         <span>Page {page} / {pages}</span>
         {page<pages ? <a href={base+'&'+pager+'&page='+(page+1)+'#rendez-vous'}>Suivant →</a> : <span/>}</div>}
     </section>
+    {admin && <AdminPanel data={admin} event={event} />}
   </div>;
 }
 

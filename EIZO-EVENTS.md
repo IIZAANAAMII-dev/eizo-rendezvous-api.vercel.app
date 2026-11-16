@@ -17,19 +17,26 @@ Deux sources de données :
 - **Statuts** : les admins peuvent faire évoluer le statut d'un rendez-vous (en attente, confirmé, refusé, annulé, terminé, no-show). Les statuts `cancelled` et `refusé` ne comptent pas comme actifs.
 - **Mail hebdomadaire** : synthèse agrégée envoyée chaque lundi (voir ci-dessous).
 
-## Connexion et rôles
+## Connexion, rôles et cloisonnement
 
-1. Appliquer la migration `supabase/migrations/202611160002_eizo_event_reports.sql` sur la base Supabase.
-2. Créer les comptes dans Supabase Auth (adresse vérifiée), puis renseigner `EIZO_EVENTS_USERS` : `adresse=admin,adresse=reader`.
-3. Configurer `SUPABASE_URL` et `SUPABASE_SERVICE_ROLE_KEY` pour cette base. Ne pas donner au déploiement de prévisualisation les identifiants de production.
-4. Rôle `reader` : consultation et exports. Rôle `admin` : changement de statut.
+Les comptes se créent dans Supabase Auth (adresse confirmée). Les droits sont dans la table **`eizo_event_access`** :
+
+| colonne | rôle |
+|---|---|
+| `email` | adresse du compte (minuscules) |
+| `role` | `admin` (peut changer les statuts) ou `reader` (lecture + exports) |
+| `events` | slugs visibles, ex. `{rencontre-2026}` ; `{*}` = tous |
+| `weekly_report` | reçoit la synthèse du lundi |
+
+Une personne ne voit **que** les rendez-vous de ses événements : tableau de bord, exports, changements de statut et mail du lundi sont filtrés. Sans ligne dans la table, aucun accès (sauf `EIZO_EVENTS_USERS=email=admin`, conservé en secours).
 
 ## Synthèse e-mail hebdomadaire
 
 Vercel Cron (`vercel.json`) appelle `GET /api/events/reports/semaine` chaque lundi à 07:00 UTC (8 h à Paris). Le mail contient le résumé de la semaine écoulée (nouvelles demandes, évolution, statuts, détail par événement, liste des nouvelles demandes) et les liens vers le back-office (statistiques, synthèse détaillée de la semaine, export Excel).
 
 - **Mode dev (par défaut)** : envoi uniquement à `klegarrec@feeder.fr` (ou `EIZO_EVENTS_REPORT_DEV_TO`), objet préfixé `[DEV]`.
-- **Mode production** : `EIZO_EVENTS_REPORT_MODE=production` sur le déploiement de production → envoi à l'équipe (liste dans `src/lib/report-recipients.ts`, ou `EIZO_EVENTS_REPORT_TO`).
+- **Mode production** : `EIZO_EVENTS_REPORT_MODE=production` → un mail par ligne `weekly_report = true` de `eizo_event_access`, limité aux événements de la personne.
+- **Voir le mail d'une autre personne** (envoyé à toi seul) : ajouter `&as=adresse@feeder.fr` au test.
 - **Test immédiat** (toujours au seul développeur, sans attendre lundi) :
   `curl -H "Authorization: Bearer $CRON_SECRET" "https://eizo-rendezvous-api-vercel-app.vercel.app/api/events/reports/semaine?test=1"`
 

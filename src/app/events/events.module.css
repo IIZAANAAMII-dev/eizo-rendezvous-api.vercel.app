@@ -401,3 +401,24 @@
   .members li { flex-wrap: wrap; }
   .countdown { display: inline-block; margin: 8px 0 0; }
 }
+
+/* Chargement (écran plein et boutons en cours d'envoi). */
+.loading { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 40px 20px; text-align: center; }
+.loading img { width: min(180px, 46vw); height: auto; animation: introLogo .8s var(--ease) both; }
+.loading p { margin: 0; font: 800 10px/1.5 var(--display); letter-spacing: .22em; text-transform: uppercase; color: var(--muted); }
+.loadingBar { position: relative; width: min(220px, 60vw); height: 3px; border-radius: 3px; background: var(--sky-2); overflow: hidden; }
+.loadingBar i { position: absolute; inset: 0 auto 0 0; width: 40%; border-radius: 3px; background: var(--blue); animation: loadingBar 1.1s cubic-bezier(.6,0,.4,1) infinite; }
+@keyframes loadingBar { 0% { transform: translateX(-100%); } 100% { transform: translateX(260%); } }
+.skeleton { width: min(980px, 100%); margin-top: 34px; display: grid; gap: 16px; opacity: .8; }
+.skeleton span, .skeleton div span { display: block; border-radius: 12px; background: linear-gradient(90deg, #eef5fb 25%, #f8fbfe 50%, #eef5fb 75%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+.skelTitle { height: 64px; width: 70%; }
+.skelRow { height: 18px; width: 45%; }
+.skeleton div { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.skeleton div span { height: 110px; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+.shell [data-spinner] { display: inline-block; width: 14px; height: 14px; margin-right: 8px; vertical-align: -2px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.shell button[data-pending] { cursor: progress; opacity: .85; }
+.shell button:disabled { cursor: progress; }
+@media (max-width: 720px) { .skeleton div { grid-template-columns: 1fr 1fr; } }
+@media (prefers-reduced-motion: reduce) { .loadingBar i, .skeleton span, .shell [data-spinner] { animation-duration: 3s; } }

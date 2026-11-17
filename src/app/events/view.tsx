@@ -3,7 +3,7 @@ import { type Booking, type Event, dayKey, initials, inWeek, isCounted, slotText
 import { changeReportMode, invite, login, saveRegistration, sendPreview } from './actions';
 import type { Member } from '@/lib/team';
 import { formEvents } from '@/lib/registrations';
-import { Motion } from './motion';
+import { Motion, Submit } from './motion';
 import styles from './events.module.css';
 
 const FONTS = 'https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@500;600;700;800&display=swap';
@@ -202,7 +202,7 @@ function RegistrationFields({action,row,eventSlug,submit}:{action:(form:FormData
     <label>Téléphone<input name="phone" type="tel" defaultValue={row?.customer_phone ?? ''} /></label>
     <label>Créneau<input name="slot" list="eizo-slots" defaultValue={row?.slot_label ?? ''} placeholder="Ex. : 10 h - 11 h" /></label>
     <label className={styles.wide}>Message<textarea name="message" rows={2} defaultValue={row?.customer_notes ?? ''} /></label>
-    <button>{submit}</button>
+    <Submit pending="Enregistrement…">{submit}</Submit>
   </form>;
 }
 
@@ -225,15 +225,15 @@ function AdminPanel({data,event}:{data:AdminData;event?:Event}) {
         {event && <input type="hidden" name="event" value={event.slug}/>}
         <label>Version de<select name="as" defaultValue={data.self}>
           {data.members.map(member=><option key={member.email} value={member.email}>{member.email===data.self ? 'moi' : member.email}</option>)}</select></label>
-        <button className={styles.smallButton}>M’envoyer un aperçu maintenant</button>
+        <Submit className={styles.smallButton} pending="Envoi en cours…">M’envoyer un aperçu maintenant</Submit>
       </form>
       <form action={changeReportMode} className={styles.modeForm}>
         {event && <input type="hidden" name="event" value={event.slug}/>}
         {mode.wanted==='production'
-          ? <><input type="hidden" name="mode" value="dev"/><button className={styles.ghostSmall}>Repasser en mode test (moi seul)</button></>
+          ? <><input type="hidden" name="mode" value="dev"/><Submit className={styles.ghostSmall} pending="Enregistrement…">Repasser en mode test (moi seul)</Submit></>
           : <><input type="hidden" name="mode" value="production"/>
             <label className={styles.check}><input type="checkbox" name="confirm" value="oui"/>Je confirme l’envoi aux {data.members.filter(m=>m.weeklyReport).length} destinataires</label>
-            <button className={styles.ghostSmall}>Envoyer la synthèse à l’équipe</button></>}
+            <Submit className={styles.ghostSmall} pending="Enregistrement…">Envoyer la synthèse à l’équipe</Submit></>}
       </form>
       {mode.updatedBy && <p className={styles.small}>Dernier changement : {mode.updatedBy}</p>}
     </article>
@@ -245,7 +245,7 @@ function AdminPanel({data,event}:{data:AdminData;event?:Event}) {
           <small>{member.role==='admin'?'Admin · ':''}{member.events==='*' ? 'tous les événements' : member.events.join(', ')}{member.weeklyReport ? ' · reçoit la synthèse' : ''}</small></span>
         <span className={member.lastSignIn ? styles.memberOn : styles.memberOff}>{member.lastSignIn ? 'Connecté le '+new Intl.DateTimeFormat('fr-FR',{timeZone:'Europe/Paris',day:'2-digit',month:'short'}).format(new Date(member.lastSignIn)) : member.account ? 'Compte créé' : 'Pas encore invité'}</span>
         {member.email!==data.self && <form action={invite}>{event && <input type="hidden" name="event" value={event.slug}/>}<input type="hidden" name="email" value={member.email}/>
-          <button className={styles.ghostSmall}>{member.lastSignIn ? 'Renvoyer un lien' : 'Inviter'}</button></form>}
+          <Submit className={styles.ghostSmall} pending="Envoi…">{member.lastSignIn ? 'Renvoyer un lien' : 'Inviter'}</Submit></form>}
       </li>)}</ul>
       <p className={styles.small}>{others.filter(m=>!m.lastSignIn).length} personne(s) ne se sont pas encore connectées. Les droits (événements visibles, synthèse) se règlent dans la table <code>eizo_event_access</code>.</p>
     </article>
@@ -360,7 +360,7 @@ export function Dashboard({event,events,rows:allRows,query,admin}:{
         <label className={styles.searchField}>Recherche<input name="q" defaultValue={query.q} placeholder="Nom, société, e-mail, créneau, message…"/></label>
         <label>Reçues du<input type="date" name="from" defaultValue={query.from}/></label>
         <label>au<input type="date" name="to" defaultValue={query.to}/></label>
-        <button data-magnet>Filtrer</button>
+        <Submit magnet pending="Recherche…">Filtrer</Submit>
       </form>
       {admin && isFormEvent && <details className={styles.addFiche}>
         <summary>+ Ajouter une inscription (téléphone, salon…)</summary>
@@ -389,7 +389,7 @@ export function Login({refused}:{refused?:boolean}) {
       {refused && <p role="alert" className={styles.alert}>Connexion refusée.</p>}
       <label>Adresse professionnelle<input name="email" type="email" autoComplete="username" required /></label>
       <label>Mot de passe<input name="password" type="password" autoComplete="current-password" required /></label>
-      <button data-magnet>Se connecter <span>↗</span></button>
+      <Submit magnet pending="Connexion…">Se connecter <span>↗</span></Submit>
       <a className={styles.formLink} href="/events/mot-de-passe">Première connexion ou mot de passe oublié ?</a>
     </form>
   </section>;

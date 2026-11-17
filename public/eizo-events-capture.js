@@ -15,6 +15,40 @@
   };
   var lastSent = "";
 
+  // Partenaires : ajoute Matrox à la bande des partenaires technologiques (sans doublon si le
+  // logo est un jour ajouté directement dans le HTML de la page Shopify).
+  var PARTNERS = [
+    { name: "Matrox", label: "MATROX", logo: "https://cdn.shopify.com/s/files/1/0844/9913/6854/files/matrox_video_logo_400x225_85a463c7-abb9-4725-830e-7c8e6da4eaa7.png?v=1743158949" }
+  ];
+  function addPartners(){
+    var strip = document.querySelector("#elp-partenaires .elp-brand-strip");
+    if (!strip) return;
+    var added = 0;
+    PARTNERS.forEach(function(partner){
+      if (strip.querySelector('img[alt="' + partner.name + '"]')) return;
+      var item = document.createElement("div");
+      item.className = "elp-brand";
+      var img = document.createElement("img");
+      img.src = partner.logo; img.alt = partner.name; img.width = 155; img.height = 52;
+      img.loading = "lazy"; img.decoding = "async";
+      var label = document.createElement("span");
+      label.textContent = partner.label;
+      item.appendChild(img); item.appendChild(label);
+      strip.appendChild(item); added++;
+    });
+    var total = strip.querySelectorAll(".elp-brand").length;
+    if (added && !document.getElementById("eizo-partners-style")) {
+      var style = document.createElement("style");
+      style.id = "eizo-partners-style";
+      // Sélecteurs plus précis que ceux de la page, dont le CSS est chargé après ce script.
+      style.textContent = "#eizo-lp #elp-partenaires .elp-brand-strip{grid-template-columns:repeat(" + total + ",minmax(0,1fr))}" +
+        "@media(max-width:800px){#eizo-lp #elp-partenaires .elp-brand-strip{grid-template-columns:repeat(2,minmax(0,1fr))}" +
+        "#eizo-lp #elp-partenaires .elp-brand:last-child:nth-child(2n){border-right:0}}";
+      document.head.appendChild(style);
+    }
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", addPartners, { once: true }); else addPartners();
+
   function readQueue(){ try { return JSON.parse(localStorage.getItem(QUEUE) || "[]"); } catch(e){ return []; } }
   function writeQueue(list){ try { localStorage.setItem(QUEUE, JSON.stringify(list.slice(-10))); } catch(e){} }
   function enqueue(payload){

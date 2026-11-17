@@ -4,6 +4,7 @@ import { bookings, dayKey, events, type Event, type Query, singleValues } from '
 import { lastSyntheses, lastReportDay, mailReady, nextSendDay, reportMode, reportedEvents } from '@/lib/synthesis';
 import { team } from '@/lib/team';
 import { logout } from './actions';
+import { Submit } from './motion';
 import { Dashboard, Login, Shell, type AdminData } from './view';
 import styles from './events.module.css';
 
@@ -44,7 +45,7 @@ export default async function Page({searchParams}: {searchParams:Promise<Query>}
 
   return <Shell
     who={<span className={styles.who}>{access.email}<b>{access.role==='admin' ? 'Admin' : access.events==='*' ? 'Tous les événements' : access.events.length+' événement'+(access.events.length>1?'s':'')}</b></span>}
-    control={<form action={logout}><button className={styles.logout}>Déconnexion</button></form>}>
+    control={<form action={logout}><Submit className={styles.logout} pending="Déconnexion…">Déconnexion</Submit></form>}>
     <Dashboard events={list} event={current} rows={rows} query={query} admin={admin} />
   </Shell>;
 }

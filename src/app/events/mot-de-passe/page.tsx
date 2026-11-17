@@ -2,6 +2,7 @@ import { readPasswordToken } from '@/lib/password-link';
 import { type Query, singleValues } from '@/lib/rdv';
 import { requestPassword, setPassword } from '../actions';
 import { Shell, Title } from '../view';
+import { Submit } from '../motion';
 import styles from '../events.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -30,13 +31,13 @@ export default async function Password({searchParams}: {searchParams:Promise<Que
           <input type="hidden" name="t" value={query.t} />
           <label>Nouveau mot de passe<input name="password" type="password" autoComplete="new-password" minLength={10} required /></label>
           <label>Confirmer<input name="confirm" type="password" autoComplete="new-password" minLength={10} required /></label>
-          <button data-magnet>Enregistrer et me connecter <span>↗</span></button>
+          <Submit magnet pending="Connexion…">Enregistrer et me connecter <span>↗</span></Submit>
         </form>
       : <form action={requestPassword} className={styles.loginForm} data-reveal>
           {query.envoye && <p role="status" className={styles.sent}>Si cette adresse a accès au back-office, un e-mail vient d’être envoyé. Pensez à vérifier les indésirables.</p>}
           {query.erreur && <p role="alert" className={styles.alert}>{errors[query.erreur] ?? errors.lien}</p>}
           <label>Adresse professionnelle<input name="email" type="email" autoComplete="username" required /></label>
-          <button data-magnet>Recevoir mon lien <span>↗</span></button>
+          <Submit magnet pending="Envoi…">Recevoir mon lien <span>↗</span></Submit>
           <a className={styles.formLink} href="/events">← Retour à la connexion</a>
         </form>}
   </section></Shell>;
